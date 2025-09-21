@@ -13,7 +13,7 @@ Lightweight userscript that masks dollar amounts on Monarch Money to prevent sho
 1. Install Tampermonkey for your browser:
    - [Tampermonkey for Chrome](https://tampermonkey.net/?ext=dhdg&browser=chrome)
    - [Tampermonkey for Firefox](https://tampermonkey.net/?ext=dhdg&browser=firefox)
-2. 🚀 [Click here to install latest version - V1.2.0](https://github.com/mattebad/MonarchMoneyObfuscationTweakraw/refs/heads/main/MonarchMoneyObfuscate.user.js) 
+2. 🚀 [Click here to install latest version - V1.2.0](https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js) 
 3. Ensure the script is enabled while on an open Monarch Money tab.
 
 The script only runs on `https://app.monarchmoney.com/*`.
