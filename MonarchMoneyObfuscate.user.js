@@ -3,7 +3,7 @@
 // @namespace    https://tampermonkey.net/
 // @version      1.2.0
 // @description  Obfuscate dollar amounts on Monarch Money Dashboard/Accounts/Transactions/Objectives/Plan with performant observers
-// @match        https://app.monarchmoney.com/*
+// @match        https://app.monarch.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=monarchmoney.com
 // @grant        none
 // ==/UserScript==
