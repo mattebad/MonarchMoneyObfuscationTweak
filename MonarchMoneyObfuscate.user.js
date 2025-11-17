@@ -453,7 +453,8 @@
             link.id = 'mtm-obf-master';
             link.href = '#';
             link.setAttribute('role','button');
-            link.className = 'NavLink-sc-1bdi3x9-0 jwNjNr NavBarLink__Container-sc-1xv1ifc-3 dFxBOe NavBarLink-sc-1xv1ifc-4 gmbciN';
+            // Copy className from existing nav link to match styling
+            link.className = firstLink.className;
             link.setAttribute('data-state','closed');
             // Always keep as last item of the primary group
             link.style.order = '9999';
