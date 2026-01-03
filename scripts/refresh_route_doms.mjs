@@ -2,6 +2,7 @@ import { chromium } from 'playwright';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { JSDOM } from 'jsdom';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +27,87 @@ function normalizeHtml(html) {
     /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
     '00000000-0000-0000-0000-000000000000',
   );
+}
+
+function sanitizeHtml(html) {
+  const dom = new JSDOM(String(html));
+  const { document, NodeFilter } = dom.window;
+
+  // Remove scripts entirely (can contain embedded user data and is irrelevant to DOM-structure tests).
+  for (const s of Array.from(document.querySelectorAll('script'))) s.remove();
+
+  const UUID_RE = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+  const EMAIL_RE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
+  const MONEY_RE = /\$\s*[\d,.]+|\(\$\s*[\d,.]+\)|-\$\s*[\d,.]+/g;
+  const PERCENT_RE = /\b-?\d+(?:\.\d+)?%\b/g;
+
+  function escapeRegExp(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function sanitizeMoneyMatch(m) {
+    const t = String(m).trim();
+    const isNeg = t.startsWith('-$');
+    const isParen = /^\(\$/.test(t);
+    let masked = '$1,234.56';
+    if (isNeg) masked = `-${masked}`;
+    if (isParen) masked = `(${masked})`;
+    return masked;
+  }
+
+  // Best-effort: detect the logged-in user's name and redact it anywhere it appears.
+  const namesToRedact = new Set();
+  for (const el of Array.from(document.querySelectorAll('[class*="UserName"]'))) {
+    const t = (el.textContent || '').trim();
+    if (t && t.length <= 60) namesToRedact.add(t);
+  }
+  // Also detect greeting breadcrumb: "Good afternoon, <Name>!"
+  for (const el of Array.from(document.querySelectorAll('*'))) {
+    const t = (el.textContent || '').trim();
+    if (!t) continue;
+    if (t.length > 80) continue;
+    if (!t.startsWith('Good ')) continue;
+    const m = t.match(/^Good (?:morning|afternoon|evening),\s*([^!]+)!/);
+    if (!m) continue;
+    const name = (m[1] || '').trim();
+    if (!name) continue;
+    if (name.length > 60) continue;
+    if (/\$/.test(name)) continue;
+    if (/\d/.test(name)) continue;
+    namesToRedact.add(name);
+  }
+  const nameRes = Array.from(namesToRedact).map((n) => new RegExp(escapeRegExp(n), 'g'));
+
+  const walker = document.createTreeWalker(document, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    let v = node.nodeValue;
+    if (!v || !v.trim()) continue;
+
+    const parent = node.parentElement;
+    const inFsExclude = !!(parent && parent.closest && parent.closest('.fs-exclude'));
+    const inCreditScore = !!(parent && parent.closest && parent.closest('[class*="CreditScore"]'));
+
+    let next = v;
+    next = next.replace(UUID_RE, '00000000-0000-0000-0000-000000000000');
+    next = next.replace(EMAIL_RE, 'user@example.com');
+    next = next.replace(MONEY_RE, sanitizeMoneyMatch);
+    next = next.replace(PERCENT_RE, '0.0%');
+    for (const re of nameRes) next = next.replace(re, 'REDACTED');
+
+    if (inFsExclude && next.indexOf('$') === -1) {
+      const trimmed = next.trim();
+      if (trimmed && /[A-Za-z0-9]/.test(trimmed)) next = 'REDACTED';
+    }
+    if (inCreditScore && next.indexOf('$') === -1) {
+      const trimmed = next.trim();
+      if (trimmed && /[A-Za-z0-9]/.test(trimmed)) next = 'REDACTED';
+    }
+
+    if (next !== v) node.nodeValue = next;
+  }
+
+  return dom.serialize();
 }
 
 async function main() {
@@ -62,11 +144,22 @@ async function main() {
     await page.waitForSelector('#root', { timeout: 30_000, state: 'attached' });
     // Wait for a stable, user-visible anchor in the sidebar to ensure the app rendered.
     await page.waitForSelector('a[href="/dashboard"]', { timeout: 30_000 });
+    // Ensure at least one currency value is present in privacy-marked nodes; this makes fixtures useful
+    // for selector regression tests and avoids capturing a partially-rendered virtualized list.
+    await page.waitForFunction(() => {
+      const els = document.querySelectorAll('.fs-exclude, .fs-mask');
+      for (let i = 0; i < els.length; i++) {
+        const t = els[i].textContent || '';
+        if (t.indexOf('$') !== -1) return true;
+      }
+      return false;
+    }, null, { timeout: 30_000 });
     // Give the SPA a moment to finish initial render.
     await page.waitForTimeout(1500);
 
     const html = await page.evaluate(() => document.documentElement.outerHTML);
-    const normalized = normalizeHtml(html);
+    const sanitized = sanitizeHtml(html);
+    const normalized = normalizeHtml(sanitized);
 
     const outPath = path.join(ROUTE_DOMS_DIR, t.file);
     let prev = '';
