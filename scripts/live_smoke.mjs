@@ -178,7 +178,7 @@ async function main() {
 
   const page = await context.newPage();
 
-  const routes = ['/dashboard', '/transactions', '/investments'];
+  const routes = ['/dashboard', '/accounts', '/transactions', '/objectives', '/plan', '/investments'];
   for (const route of routes) {
     try {
       await runRoute(page, route);
