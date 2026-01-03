@@ -40,10 +40,21 @@
     (function MTM_Obfuscation_InitCSS(){
         if (document.getElementById('mtm-obf-css')) return;
         const css = '\n.mtm-amount-wrap{position:relative;display:inline-block;margin-right:.25em}\nbody.mt-obfuscate-on .fs-mask .recharts-yAxis .recharts-text tspan{opacity:0}\n.mtm-nav-eye-btn{display:flex;align-items:center;gap:12px;cursor:pointer;color:inherit;background:transparent;border:0;width:100%;padding:8px 10px;border-radius:8px;text-align:left}\n.mtm-nav-eye-btn:hover{background:rgba(255,255,255,.06)}\n.mtm-nav-eye-btn .mtm-iconwrap{display:flex;align-items:center;justify-content:center;width:40px;height:40px}\n.mtm-nav-eye-btn .mtm-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px}\n.mtm-nav-eye-btn .mtm-icon svg{width:20px;height:20px;display:block}\n.mtm-nav-eye-btn .mtm-label{font-size:12px;white-space:nowrap}\n.mtm-nav-collapsed .mtm-label{display:none}\n#mtm-obf-master{position:sticky;bottom:8px;transition:none!important}\n#mtm-obf-master .LinkIcon-sc-1qcij8x-0{flex:0 0 auto;transition:none!important}\n.sidebar-collapsed #mtm-obf-master{height:40px!important;padding-top:0!important;padding-bottom:0!important;transition:none!important}\n.sidebar-collapsed #mtm-obf-master .NavBarLink__Title-sc-1xv1ifc-2{display:none!important}\n';
-        const style = document.createElement('style');
-        style.id = 'mtm-obf-css';
-        style.textContent = css;
-        document.head.appendChild(style);
+        function inject(){
+            try {
+                if (document.getElementById('mtm-obf-css')) return;
+                const head = document.head || document.documentElement;
+                if(!head) return;
+                const style = document.createElement('style');
+                style.id = 'mtm-obf-css';
+                style.textContent = css;
+                head.appendChild(style);
+            } catch(e) { void e; }
+        }
+        // When injected via Playwright addInitScript, document.head may not exist yet; defer safely.
+        if (document.head) inject();
+        else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject, { once: true });
+        else inject();
     })();
 
     // Central configuration: allowed routes, scan containers, and elements to skip.
