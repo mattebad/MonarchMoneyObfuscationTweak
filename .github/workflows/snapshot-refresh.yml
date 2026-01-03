@@ -1,0 +1,47 @@
+name: snapshot-refresh
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Nightly at 06:45 UTC (staggered from live-smoke)
+    - cron: "45 6 * * *"
+
+jobs:
+  snapshot-refresh:
+    # Secrets are not available to workflows triggered from forks.
+    if: github.repository_owner == 'mattebad'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-jammy
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      MONARCH_STORAGE_STATE_B64: ${{ secrets.MONARCH_STORAGE_STATE_B64 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Refresh route DOM snapshots from live Monarch
+        run: npm run snapshot:refresh
+
+      - name: Create PR if snapshots changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore(snapshots): refresh route DOM snapshots"
+          title: "chore(snapshots): refresh route DOM snapshots"
+          body: |
+            Automated snapshot refresh from live Monarch (Playwright).
+
+            If this PR is large/noisy, consider tightening snapshot normalization in `scripts/refresh_route_doms.mjs`.
+          branch: "ci/snapshot-refresh"
+          delete-branch: true
+          add-paths: |
+            Route DOMs/
+
+

@@ -1,0 +1,36 @@
+name: live-smoke
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Nightly at 06:15 UTC
+    - cron: "15 6 * * *"
+
+jobs:
+  live-smoke:
+    # Secrets are not available to workflows triggered from forks.
+    if: github.repository_owner == 'mattebad'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-jammy
+    env:
+      MONARCH_STORAGE_STATE_B64: ${{ secrets.MONARCH_STORAGE_STATE_B64 }}
+      MONARCH_VERIFY_GRAPHQL_AUTH: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Live smoke (requires auth)
+        run: npm run live:smoke
+
+      - name: Upload artifacts (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: playwright-artifacts/
+
+
