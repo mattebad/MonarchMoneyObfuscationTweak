@@ -99,7 +99,11 @@ async function runRoute(page, routePath) {
     throw new Error(`Auth failed or expired (bounced to /login) while loading ${routePath}`);
   }
 
-  await page.waitForSelector('#root', { timeout: 30_000 });
+  // Note: on some builds the app root can be present but not "visible" per Playwright heuristics
+  // (e.g., 0-sized root with fixed-position children). We only need it attached.
+  await page.waitForSelector('#root', { timeout: 30_000, state: 'attached' });
+  // Wait for a stable, user-visible anchor in the sidebar to ensure the app rendered.
+  await page.waitForSelector('a[href="/dashboard"]', { timeout: 30_000 });
 
   // Toggle should be injected into the sidebar.
   await page.waitForSelector('#mtm-obf-master', { timeout: 20_000 });
