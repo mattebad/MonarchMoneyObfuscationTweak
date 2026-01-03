@@ -110,6 +110,20 @@ function sanitizeHtml(html, namesToRedact) {
     if (next !== v) node.nodeValue = next;
   }
 
+  // Shrink fixtures: keep only the SPA root. This removes huge inline <style> blocks (incl. sourcemaps),
+  // cookie banners, iframes (Stripe/recaptcha), and other non-structural noise.
+  try {
+    const root = document.getElementById('root');
+    if (root && document.body) {
+      const cloned = root.cloneNode(true);
+      if (document.head) document.head.innerHTML = '';
+      document.body.innerHTML = '';
+      document.body.appendChild(cloned);
+    }
+  } catch {
+    // ignore
+  }
+
   return dom.serialize();
 }
 
