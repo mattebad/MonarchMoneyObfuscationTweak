@@ -1,15 +1,18 @@
 // ==UserScript==
 // @name         Monarch Money - Obfuscate Balances
 // @namespace    https://tampermonkey.net/
-// @version      1.2.0
-// @description  Obfuscate dollar amounts on Monarch Money Dashboard/Accounts/Transactions/Objectives/Plan with performant observers
+// @version      1.3.0
+// @description  Obfuscate dollar amounts on Monarch Money Dashboard/Accounts/Transactions/Objectives/Plan/Investments with performant observers
 // @match        https://app.monarch.com/*
+// @downloadURL  https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js
+// @updateURL    https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=monarchmoney.com
 // @grant        none
 // ==/UserScript==
 
 (function(){
     'use strict';
+    const MTM_TEST_MODE = !!window.__MTM_OBF_TEST__;
 
     // Minimal helpers (localStorage-backed)
     function setCookie(cName, cValue) { localStorage.setItem(cName,cValue); }
@@ -24,7 +27,15 @@
         if(OldValue > spin) { setCookie(inCookie,0); } else {setCookie(inCookie,OldValue); }
     }
 
-    // [ MT: Obfuscate Dollar Amounts — scoped to /dashboard, /accounts, /transactions, /objectives, /plan ]
+    // Debug (opt-in): set localStorage MTM_OBF_DEBUG=1 to enable console.debug + counters.
+    function MTM_isDebugEnabled(){ try { return getCookie('MTM_OBF_DEBUG', true) == 1; } catch(e) { void e; return false; } }
+    function MTM_dbg(){
+        if(!MTM_isDebugEnabled()) return;
+        try { console.debug.apply(console, ['[MTM Obfuscate]'].concat([].slice.call(arguments))); } catch(e) { void e; }
+    }
+    window.MTM_OBF_STATS = window.MTM_OBF_STATS || { scanRuns:0, candidatesSeen:0, watched:0, enqueued:0, queueRuns:0, wrapAttempts:0, wrapSuccess:0, observerStarts:0, observerStops:0 };
+
+    // [ MT: Obfuscate Dollar Amounts — scoped to /dashboard, /accounts, /transactions, /objectives, /plan, /investments ]
     // Injects minimal CSS used by the masking spans and the sidebar toggle; idempotent.
     (function MTM_Obfuscation_InitCSS(){
         if (document.getElementById('mtm-obf-css')) return;
@@ -37,7 +48,7 @@
 
     // Central configuration: allowed routes, scan containers, and elements to skip.
     const MTM_OBF_CFG = {
-        routeAllow: [/^\/dashboard(?:\/|$)/, /^\/accounts(?:\/|$)/, /^\/transactions(?:\/|$)/, /^\/objectives(?:\/|$)/, /^\/plan(?:\/|$)/],
+        routeAllow: [/^\/dashboard(?:\/|$)/, /^\/accounts(?:\/|$)/, /^\/transactions(?:\/|$)/, /^\/objectives(?:\/|$)/, /^\/plan(?:\/|$)/, /^\/investments(?:\/|$)/],
         containerAllow: [
             'main',
             '[data-rbd-droppable-id="accountGroups"]',
@@ -61,6 +72,8 @@
             '[class*="CashFlowDashboardWidgetGraph__"]'
         ],
     };
+    // Precomputed skip selector for a single closest() check in hot paths.
+    const MTM_SKIP_CLOSEST = MTM_OBF_CFG.skipSelectors.join(',');
 
     // Precompiled regexes to avoid re-allocation on hot paths
     const MTM_RE_MONEY = /\$\s*[\d,.]+|\(\$\s*[\d,.]+\)|-\$\s*[\d,.]+/g;
@@ -75,18 +88,20 @@
     window.MTM_OBF_SCHEDULED = window.MTM_OBF_SCHEDULED || false;
     // IntersectionObserver gating: process only when candidates are near/inside viewport.
     window.MTM_IO = window.MTM_IO || (('IntersectionObserver' in window) ? new IntersectionObserver(function(entries){
+        var didEnqueue = false;
         for (var i=0;i<entries.length;i++){
             var entry = entries[i];
             if(entry.isIntersecting){
                 MTM_enqueue(entry.target);
+                didEnqueue = true;
                 try { window.MTM_IO.unobserve(entry.target); } catch(e) { void e; }
             }
         }
-        MTM_scheduleProcessQueue();
+        if(didEnqueue) MTM_scheduleProcessQueue();
     },{root: null, rootMargin: '200px', threshold: 0}) : null);
     // Watch helper: observes element visibility or falls back to immediate queueing.
     function MTM_watch(el){
-        if(!el) return;
+        if(!el || !MTM_isActive()) return;
         if(window.MTM_IO){
             try { window.MTM_IO.observe(el); } catch(e) { void e; MTM_enqueue(el); MTM_scheduleProcessQueue(); }
         } else {
@@ -104,11 +119,19 @@
     }
     // Enqueue a candidate element for masked wrapping; skips already processed/masked hosts.
     function MTM_enqueue(el){
+        if(!MTM_isActive()) return;
         if(!MTM_shouldProcess(el)) return;
         window.MTM_OBF_PENDING.add(el);
+        try { window.MTM_OBF_STATS.enqueued += 1; } catch(e) { void e; }
     }
     // Processes the pending queue within a frame time budget to avoid long tasks.
     function MTM_processPendingQueue(){
+        if(!MTM_isActive()){
+            try { window.MTM_OBF_PENDING.clear(); } catch(e) { void e; }
+            window.MTM_OBF_SCHEDULED = false;
+            return;
+        }
+        try { window.MTM_OBF_STATS.queueRuns += 1; } catch(e) { void e; }
         const start = performance.now();
         const budgetMs = 8;
         const cap = 300;
@@ -122,7 +145,8 @@
             if(el && el.isConnected){
                 if(el.querySelector && el.querySelector('.mtm-amount')){ try{ window.MTM_SEEN.add(el);}catch(e){ void e; } }
                 else {
-                    if(MTM_wrapFirstAmount(el)) { processed+=1; }
+                    try { window.MTM_OBF_STATS.wrapAttempts += 1; } catch(e) { void e; }
+                    if(MTM_wrapFirstAmount(el)) { processed+=1; try { window.MTM_OBF_STATS.wrapSuccess += 1; } catch(e) { void e; } }
                 }
             }
             if(processed >= cap || (performance.now() - start) > budgetMs) break;
@@ -136,6 +160,11 @@
     }
     // Schedules queue processing on the next animation frame once.
     function MTM_scheduleProcessQueue(){
+        if(!MTM_isActive()){
+            try { window.MTM_OBF_PENDING.clear(); } catch(e) { void e; }
+            window.MTM_OBF_SCHEDULED = false;
+            return;
+        }
         if(window.MTM_OBF_SCHEDULED) return;
         window.MTM_OBF_SCHEDULED = true;
         requestAnimationFrame(MTM_processPendingQueue);
@@ -157,6 +186,8 @@
     }
     // Returns user preference for masking (driven by sidebar toggle or settings checkbox).
     function MTM_isObfEnabled() { return getCookie('MT_HideSensitiveInfo', true) == 1; }
+    // Single source of truth for whether masking work should run.
+    function MTM_isActive(){ return MTM_isRouteAllowed() && MTM_isObfEnabled(); }
     // Finds DOM roots to scan/observe, limited to known containers for performance.
     function MTM_findScopes() {
         const roots = MTM_OBF_CFG.containerAllow.map(sel => Array.from(document.querySelectorAll(sel))).flat();
@@ -189,7 +220,7 @@
     // Wraps the first $ amount found within an element into .mtm-amount span; returns true if wrapped.
     function MTM_wrapFirstAmount(el){
         if(!el) return false;
-        if(MTM_OBF_CFG.skipSelectors.some(function(sel){ return el.matches(sel) || el.closest(sel); })) return false;
+        if(MTM_SKIP_CLOSEST && el.closest && el.closest(MTM_SKIP_CLOSEST)) return false;
         // Locate the first '$' using a TreeWalker; supports both simple and spanning cases.
         var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
         var startNode = null, endNode = null, startOffset = 0, endOffset = 0;
@@ -261,11 +292,22 @@
     }
     // Scans allowed containers (or a given root) and wraps simple currency occurrences once.
     function MTM_scanAndWrap(root){
-        if (!MTM_isRouteAllowed() || !MTM_isObfEnabled()) return;
+        if (!MTM_isActive()) return;
+        try { window.MTM_OBF_STATS.scanRuns += 1; } catch(e) { void e; }
         const scopes = root ? [root] : MTM_findScopes();
         scopes.forEach(function(scope){
-            var candidates = Array.from(scope.querySelectorAll('.fs-exclude'));
-            candidates.forEach(function(el){ if(MTM_shouldProcess(el)) { MTM_watch(el); } });
+            // Primary: target Monarch's FullStory privacy-marked nodes (fs-exclude/fs-mask) that actually contain '$'
+            var candidates = scope.querySelectorAll('.fs-exclude, .fs-mask');
+            for (var ci=0; ci<candidates.length; ci++){
+                var el = candidates[ci];
+                try { window.MTM_OBF_STATS.candidatesSeen += 1; } catch(e) { void e; }
+                if(!MTM_shouldProcess(el)) continue;
+                if(MTM_SKIP_CLOSEST && el.closest && el.closest(MTM_SKIP_CLOSEST)) continue;
+                var txt = el.textContent || '';
+                if(txt.indexOf('$') === -1) continue;
+                try { window.MTM_OBF_STATS.watched += 1; } catch(e) { void e; }
+                MTM_watch(el);
+            }
             // Fallback for account details pages where amounts may not be marked fs-exclude
             var path = window.location.pathname || '';
             if(/^\/accounts(?:\/|$)/.test(path)){
@@ -292,7 +334,8 @@
         // Starts scoped observers if masking is enabled and route is allowed.
         window.MTM_startObserver = function(){
             window.MTM_stopObserver();
-            if(!MTM_isObfEnabled() || !MTM_isRouteAllowed()) return;
+            if(!MTM_isActive()) return;
+            try { window.MTM_OBF_STATS.observerStarts += 1; } catch(e) { void e; }
 
             var scopes = MTM_findScopes();
             window.MTM_OBF_OBSERVERS = [];
@@ -306,10 +349,22 @@
                             for (var j=0; j<m.addedNodes.length; j++){
                                 var node = m.addedNodes[j];
                                 if(!(node instanceof Element)) continue;
-                                if(node.matches && node.matches('.fs-exclude')){ if(MTM_shouldProcess(node)) { if(window.MTM_IO) { MTM_watch(node); } else { MTM_enqueue(node); } } }
+                                if(node.matches && node.matches('.fs-exclude, .fs-mask')){
+                                    if(MTM_shouldProcess(node)){
+                                        if(MTM_SKIP_CLOSEST && node.closest && node.closest(MTM_SKIP_CLOSEST)) { continue; }
+                                        var t0 = node.textContent || '';
+                                        if(t0.indexOf('$') !== -1) { if(window.MTM_IO) { MTM_watch(node); } else { MTM_enqueue(node); } }
+                                    }
+                                }
                                 if(node.querySelectorAll){
-                                    var list = node.querySelectorAll('.fs-exclude');
-                                    for(var k=0; k<list.length; k++) { if(MTM_shouldProcess(list[k])) { if(window.MTM_IO) { MTM_watch(list[k]); } else { MTM_enqueue(list[k]); } } }
+                                    var list = node.querySelectorAll('.fs-exclude, .fs-mask');
+                                    for(var k=0; k<list.length; k++) {
+                                        if(!MTM_shouldProcess(list[k])) continue;
+                                        if(MTM_SKIP_CLOSEST && list[k].closest && list[k].closest(MTM_SKIP_CLOSEST)) continue;
+                                        var t1 = list[k].textContent || '';
+                                        if(t1.indexOf('$') === -1) continue;
+                                        if(window.MTM_IO) { MTM_watch(list[k]); } else { MTM_enqueue(list[k]); }
+                                    }
                                 }
                                 // Also handle dashboard non-fs-exclude currency nodes that load late
                                 if(/^\/dashboard(?:\/|$)/.test(path)){
@@ -323,9 +378,11 @@
                         } else if(m.type === 'characterData'){
                             var p = m.target && m.target.parentElement;
                             if(p){
+                                // Ignore our own text swaps (hover reveal / applyState) to avoid observer churn.
+                                if(p.closest && p.closest('.mtm-amount-wrap')) { continue; }
                                 // Early bail when no '$' in updated text
                                 if(m.target && typeof m.target.nodeValue === 'string' && m.target.nodeValue.indexOf('$') === -1) { continue; }
-                                var host = p.matches('.fs-exclude') ? p : p.closest('.fs-exclude');
+                                var host = p.matches('.fs-exclude, .fs-mask') ? p : p.closest('.fs-exclude, .fs-mask');
                                 if(host && MTM_shouldProcess(host)) { if(window.MTM_IO) { MTM_watch(host); } else { MTM_enqueue(host); } }
                                 // Dashboard text nodes updating in place
                                 if(!host && /^\/dashboard(?:\/|$)/.test(path)){
@@ -335,7 +392,8 @@
                             }
                         }
                     }
-                    MTM_scheduleProcessQueue();
+                    // Only schedule processing if there is queued work; IntersectionObserver will schedule on intersect.
+                    if(window.MTM_OBF_PENDING && window.MTM_OBF_PENDING.size > 0) MTM_scheduleProcessQueue();
                 });
 
                 observer.observe(scope, { childList: true, subtree: true, characterData: true, characterDataOldValue: false });
@@ -348,6 +406,13 @@
                 window.MTM_OBF_OBSERVERS.forEach(function(o){ try{o.disconnect();}catch{ /* ignore */ } });
             }
             window.MTM_OBF_OBSERVERS = [];
+            try { window.MTM_OBF_STATS.observerStops += 1; } catch(e) { void e; }
+            // Ensure OFF (or unsupported routes) truly idle: clear pending work and disconnect IO targets.
+            if(!MTM_isActive()){
+                try { window.MTM_OBF_PENDING.clear(); } catch(e) { void e; }
+                window.MTM_OBF_SCHEDULED = false;
+                try { if(window.MTM_IO) window.MTM_IO.disconnect(); } catch(e) { void e; }
+            }
         };
         // Restarts observers (used after route transitions and toggles).
         window.MTM_restartObserver = function(){
@@ -357,6 +422,7 @@
     })();
     // Hover-to-reveal: shows the original amount on hover, remasks on mouseleave; respects setting.
     (function MTM_wireHoverReveal(){
+        if (MTM_TEST_MODE) return;
         if (window.MTM_OBF_HOVER_WIRED) return;
         window.MTM_OBF_HOVER_WIRED = true;
 
@@ -390,6 +456,7 @@
 
     // Lifecycle wiring: initial/burst scans and observer restarts across SPA navigation and load.
     (function MTM_wireLifecycle(){
+        if (MTM_TEST_MODE) return;
         if (window.MTM_OBF_LIFE_WIRED) return;
         window.MTM_OBF_LIFE_WIRED = true;
 
@@ -430,7 +497,7 @@
 
         var scrollTimer = null;
         window.addEventListener('scroll', function(){
-            if(!MTM_isObfEnabled()) return;
+            if(!MTM_isActive()) return;
             if(scrollTimer) clearTimeout(scrollTimer);
             scrollTimer = setTimeout(function(){ MTM_scanAndWrap(); }, 250);
         }, {passive:true});
@@ -438,14 +505,28 @@
 
     // Sidebar toggle injection: adds a nav item that flips masking on/off persistently.
     (function MTM_SideNavToggle(){
+        // In test mode, we export the ensure() helper and avoid timers/observers that keep the event loop alive.
         if (window.MTM_OBF_SIDENAV_WIRED) return;
         window.MTM_OBF_SIDENAV_WIRED = true;
 
         function ensure(){
             // Insert as a native nav item at the end of the primary list
-            var firstLink = document.querySelector('.SideBar__Content-sc-161w9oi-4 .NavBarLink__Container-sc-1xv1ifc-3, .SideBar__Content .NavBarLink__Container-sc-1xv1ifc-3, .NavBarLink__Container-sc-1xv1ifc-3');
+            var sidebarRoot = document.querySelector('[class*="SideBar__Root-"], [class*="SideBar__Root"], .SideBar__Root-sc-161w9oi-0');
+            var sideContent = sidebarRoot && (sidebarRoot.querySelector('[class*="SideBar__Content-"], [class*="SideBar__Content"], .SideBar__Content-sc-161w9oi-4') || null);
+            var firstLink =
+                (sideContent && (sideContent.querySelector('a[href="/dashboard"]') || sideContent.querySelector('a[href="/accounts"]') || sideContent.querySelector('a[href="/transactions"]') || sideContent.querySelector('a[data-discover][href^="/"]'))) ||
+                document.querySelector('a[href="/dashboard"], a[href="/accounts"], a[href="/transactions"]');
             if(!firstLink) return;
-            var navList = firstLink.closest('.FlexItem-sc-1p0zueu-0');
+            var navList = firstLink.parentElement;
+            // Walk up to the container that holds multiple primary nav links (more stable than styled-component classnames).
+            var hops = 0;
+            while(navList && sideContent && navList !== sideContent && hops < 6){
+                var count = 0;
+                try { count = navList.querySelectorAll('a[href="/dashboard"], a[href="/accounts"], a[href="/transactions"]').length; } catch(e) { void e; }
+                if(count >= 2) break;
+                navList = navList.parentElement;
+                hops++;
+            }
             if(!navList) return;
             if(document.getElementById('mtm-obf-master')) return;
 
@@ -500,7 +581,7 @@
             window.MTM_SIDENAV_ORDER_OBS = orderObs;
 
             // Toggle collapsed style by observing only the sidebar root for class changes
-            var sidebarRoot = firstLink.closest('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"]') || document.querySelector('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"]');
+            sidebarRoot = sidebarRoot || firstLink.closest('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"]') || document.querySelector('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"]');
             var setCollapsed = function(){
                 var collapsed = !!(sidebarRoot && sidebarRoot.classList.contains('sidebar-collapsed'));
                 link.classList.toggle('mtm-nav-collapsed', collapsed);
@@ -513,11 +594,26 @@
             }
         }
 
+        window.MTM_OBF_ENSURE_SIDENAV = ensure;
+        if(MTM_TEST_MODE) return;
         // Try multiple times as sidebar mounts
         var tries = 0; var intv = setInterval(function(){
             tries++; ensure(); if(document.getElementById('mtm-obf-master') || tries > 20) clearInterval(intv);
         }, 500);
     })();
+
+    // Test harness hooks (only populated when window.__MTM_OBF_TEST__ is truthy).
+    if(MTM_TEST_MODE){
+        window.MTM_OBF_TEST_API = {
+            maskMoneyValue: MTM_maskMoneyValue,
+            wrapFirstAmount: MTM_wrapFirstAmount,
+            applyState: MTM_applyState,
+            scanAndWrap: MTM_scanAndWrap,
+            isActive: MTM_isActive,
+            ensureSideNav: function(){ try { if(window.MTM_OBF_ENSURE_SIDENAV) window.MTM_OBF_ENSURE_SIDENAV(); } catch(e) { void e; } },
+            cfg: MTM_OBF_CFG
+        };
+    }
 })();
 
 
