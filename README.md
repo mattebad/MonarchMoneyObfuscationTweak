@@ -6,20 +6,20 @@ Lightweight userscript that masks dollar amounts on Monarch Money to prevent sho
 - **Masks currency**: Replaces values like `$4,201.28`, `-$150.00`, and `($99.00)` with a normalized pattern such as `$*,***.**`.
 - **Hover to reveal**: When masking is on, hovering a masked value temporarily reveals the original amount.
 - **Sidebar toggle**: Inserts an “Obfuscate Balances” control in Monarch’s left sidebar to turn masking on/off. Your choice is saved locally.
-- **Supported pages**: `/dashboard`, `/accounts`, `/transactions`, `/objectives`, `/plan`.
+- **Supported pages**: `/dashboard`, `/accounts`, `/transactions`, `/objectives`, `/plan`, `/investments`.
 - **Performance‑aware**: Scans only known containers; when masking is OFF it stays effectively idle.
 
 ## Install (Tampermonkey)
 1. Install Tampermonkey for your browser:
    - [Tampermonkey for Chrome](https://tampermonkey.net/?ext=dhdg&browser=chrome)
    - [Tampermonkey for Firefox](https://tampermonkey.net/?ext=dhdg&browser=firefox)
-2. 🚀 [Click here to install latest version - V1.2.0](https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js) 
+2. 🚀 [Click here to install latest version - V1.3.0](https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js) 
 3. Ensure the script is enabled while on an open Monarch Money tab.
 
-The script only runs on `https://app.monarchmoney.com/*`.
+The script only runs on `https://app.monarch.com/*`.
 
 ## Usage
-1. Visit [Monarch Money](https://app.monarchmoney.com/).
+1. Visit [Monarch Money](https://app.monarch.com/).
 2. In the left sidebar, click “Obfuscate Balances” to toggle masking.
 3. With masking ON:
    - Amounts are replaced by a masked pattern.
