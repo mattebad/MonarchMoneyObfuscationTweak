@@ -1,0 +1,64 @@
+stages:
+  - test
+  - live
+
+variables:
+  # Speed + determinism improvements for npm installs
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
+  npm_config_audit: "false"
+  npm_config_fund: "false"
+  # Prevent huge browser downloads in CI (we use the Playwright container image for live jobs).
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+cache:
+  paths:
+    - .npm/
+
+test:
+  stage: test
+  image: node:20-bookworm
+  script:
+    - node --version
+    - npm --version
+    - npm install
+    - npm test
+
+live_smoke:
+  stage: live
+  image: mcr.microsoft.com/playwright:v1.57.0-jammy
+  variables:
+    PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == "main"'
+    - when: manual
+  script:
+    - node --version
+    - npm --version
+    - npm install
+    - npm run live:smoke
+  artifacts:
+    when: on_failure
+    paths:
+      - playwright-artifacts/
+
+snapshot_refresh:
+  stage: live
+  image: mcr.microsoft.com/playwright:v1.57.0-jammy
+  variables:
+    PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == "main"'
+    - when: manual
+  script:
+    - node --version
+    - npm --version
+    - npm install
+    - npm run snapshot:refresh
+    # Fail if Monarch's HTML structure changed vs committed snapshots.
+    - git diff --exit-code "Route DOMs/"
+  artifacts:
+    when: on_failure
+    paths:
+      - Route DOMs/
+
+

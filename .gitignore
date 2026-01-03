@@ -1,0 +1,9 @@
+node_modules/
+.npm/
+
+# Playwright / auth state (DO NOT COMMIT)
+monarch.storageState.json
+playwright-artifacts/
+
+
+
