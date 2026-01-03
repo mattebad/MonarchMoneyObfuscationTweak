@@ -26,6 +26,16 @@ This repo ships two optional CI jobs (see `../.gitlab-ci.yml`):
 - `live_smoke`: logs into Monarch and verifies the userscript masks/unmasks on real pages.
 - `snapshot_refresh`: logs into Monarch, refreshes `Route DOMs/*.html`, and fails if the refreshed HTML differs from what’s committed.
 
+### GitHub Actions PR permission (snapshot refresh)
+If you use the GitHub Actions workflow `../.github/workflows/snapshot-refresh.yml`, the job can open a PR with refreshed snapshots.
+
+If the run fails with **“GitHub Actions is not permitted to create or approve pull requests”**, enable it in:
+- Repo **Settings** → **Actions** → **General**
+  - **Workflow permissions**: set **Read and write permissions**
+  - Enable **Allow GitHub Actions to create and approve pull requests**
+
+If you can’t enable that setting, set a fine-grained PAT as the Actions secret **`SNAPSHOT_REFRESH_PAT`** and the workflow will use that token for PR creation.
+
 ### Verifying storageState vs the GraphQL Authorization header
 Playwright `storageState` does **not** store HTTP request headers. The app typically derives the GraphQL `Authorization` header at runtime using cookies/localStorage.
 

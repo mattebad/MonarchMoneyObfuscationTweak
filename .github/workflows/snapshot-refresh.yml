@@ -30,18 +30,54 @@ jobs:
       - name: Refresh route DOM snapshots from live Monarch
         run: npm run snapshot:refresh
 
+      - name: Detect snapshot changes
+        id: diff
+        shell: bash
+        run: |
+          if git diff --quiet -- "Route DOMs/"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload refreshed snapshots (if changed)
+        if: steps.diff.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: refreshed-route-doms
+          path: Route DOMs/
+
       - name: Create PR if snapshots changed
+        id: cpr
+        if: steps.diff.outputs.changed == 'true'
+        continue-on-error: true
         uses: peter-evans/create-pull-request@v6
         with:
+          # If your repo disallows PR creation via GITHUB_TOKEN, set SNAPSHOT_REFRESH_PAT.
+          token: ${{ secrets.SNAPSHOT_REFRESH_PAT || github.token }}
           commit-message: "chore(snapshots): refresh route DOM snapshots"
           title: "chore(snapshots): refresh route DOM snapshots"
           body: |
             Automated snapshot refresh from live Monarch (Playwright).
 
-            If this PR is large/noisy, consider tightening snapshot normalization in `scripts/refresh_route_doms.mjs`.
+            If this PR is large/noisy, consider tightening sanitization/normalization in `scripts/refresh_route_doms.mjs`.
           branch: "ci/snapshot-refresh"
           delete-branch: true
           add-paths: |
             Route DOMs/
+
+      - name: Fail with instructions if PR creation is blocked
+        if: steps.diff.outputs.changed == 'true' && steps.cpr.outcome != 'success'
+        shell: bash
+        run: |
+          echo "Snapshots changed but GitHub Actions could not create a PR."
+          echo ""
+          echo "Fix options:"
+          echo "1) Repo Settings -> Actions -> General -> Workflow permissions:"
+          echo "   - set 'Read and write permissions'"
+          echo "   - enable 'Allow GitHub Actions to create and approve pull requests'"
+          echo ""
+          echo "2) Or create a fine-grained PAT with repo access and set Actions secret SNAPSHOT_REFRESH_PAT."
+          exit 1
 
 
