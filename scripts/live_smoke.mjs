@@ -8,6 +8,48 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 
 const USERSCRIPT_PATH = path.join(repoRoot, 'MonarchMoneyObfuscate.user.js');
+const VERIFY_GRAPHQL_AUTH = process.env.MONARCH_VERIFY_GRAPHQL_AUTH === '1';
+const DEBUG_GRAPHQL_AUTH = process.env.MONARCH_DEBUG_GRAPHQL_AUTH === '1';
+
+function getAuthScheme(authHeader) {
+  if (!authHeader) return null;
+  const s = String(authHeader).trim();
+  if (!s) return null;
+  const first = s.split(/\s+/)[0];
+  return first || null;
+}
+
+function watchFirstGraphQLRequest(page, timeoutMs) {
+  // Observe the next GraphQL request after this is called. We only return presence + scheme
+  // (never the token value) to avoid leaking secrets in logs.
+  return new Promise((resolve) => {
+    let done = false;
+    const timer = setTimeout(() => finish(null), timeoutMs);
+
+    function finish(result) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      page.off('request', onRequest);
+      resolve(result);
+    }
+
+    function onRequest(req) {
+      try {
+        const url = req.url();
+        if (!/graphql/i.test(url)) return;
+        if (req.method() === 'OPTIONS') return;
+        const headers = req.headers();
+        const auth = headers['authorization'] || null;
+        finish({ url, hasAuth: !!auth, scheme: getAuthScheme(auth) });
+      } catch {
+        finish(null);
+      }
+    }
+
+    page.on('request', onRequest);
+  });
+}
 
 function loadStorageState() {
   const b64 = process.env.MONARCH_STORAGE_STATE_B64;
@@ -47,6 +89,8 @@ async function captureFailureArtifacts(page, label) {
 async function runRoute(page, routePath) {
   const url = `https://app.monarch.com${routePath}`;
   const label = routePath.replace(/\W+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+  const gqlProbe =
+    VERIFY_GRAPHQL_AUTH || DEBUG_GRAPHQL_AUTH ? watchFirstGraphQLRequest(page, 15_000) : Promise.resolve(null);
 
   await page.goto(url, { waitUntil: 'domcontentloaded' });
 
@@ -76,6 +120,20 @@ async function runRoute(page, routePath) {
   const svgWrapped = await page.evaluate(() => !!document.querySelector('svg .mtm-amount'));
   if (svgWrapped) {
     throw new Error(`Found .mtm-amount inside <svg> on ${routePath} (should be skipped)`);
+  }
+
+  const gql = await gqlProbe;
+  if (DEBUG_GRAPHQL_AUTH) {
+    if (!gql) console.log(`[live-smoke] ${routePath}: no GraphQL request observed within 15s`);
+    else console.log(`[live-smoke] ${routePath}: GraphQL auth header present=${gql.hasAuth} scheme=${gql.scheme || 'n/a'}`);
+  }
+  if (VERIFY_GRAPHQL_AUTH) {
+    if (!gql) {
+      throw new Error(`No GraphQL request observed within 15s on ${routePath}; cannot verify Authorization header`);
+    }
+    if (!gql.hasAuth) {
+      throw new Error(`GraphQL request missing Authorization header on ${routePath} (storageState may be incomplete/expired)`);
+    }
   }
 
   // Toggle OFF and ensure the body class flips and amount becomes unmasked.

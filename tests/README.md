@@ -26,6 +26,16 @@ This repo ships two optional CI jobs (see `../.gitlab-ci.yml`):
 - `live_smoke`: logs into Monarch and verifies the userscript masks/unmasks on real pages.
 - `snapshot_refresh`: logs into Monarch, refreshes `Route DOMs/*.html`, and fails if the refreshed HTML differs from what’s committed.
 
+### Verifying storageState vs the GraphQL Authorization header
+Playwright `storageState` does **not** store HTTP request headers. The app typically derives the GraphQL `Authorization` header at runtime using cookies/localStorage.
+
+To validate that your `storageState` is sufficient, you can run the live smoke test and require that at least one GraphQL request includes an `Authorization` header (it only reports presence/scheme, not the token value):
+
+```bash
+cd MonarchMoneyObfuscationTweak
+MONARCH_STORAGE_STATE_PATH=monarch.storageState.json MONARCH_VERIFY_GRAPHQL_AUTH=1 npm run live:smoke
+```
+
 ## Auth for CI (Sign in with Apple)
 Even if you use “Sign in with Apple”, the most reliable automation input is a **Playwright storageState** (cookies + localStorage) captured after you log in once.
 
