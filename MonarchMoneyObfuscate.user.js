@@ -545,7 +545,9 @@
             link.id = 'mtm-obf-master';
             link.href = '#';
             link.setAttribute('role','button');
-            link.className = 'NavLink-sc-1bdi3x9-0 jwNjNr NavBarLink__Container-sc-1xv1ifc-3 dFxBOe NavBarLink-sc-1xv1ifc-4 gmbciN';
+            // Prefer copying Monarch's current nav link className to match styling (styled-components hashes can change).
+            // Fallback to a known-good class list from snapshots if className is missing.
+            link.className = (firstLink && firstLink.className) ? firstLink.className : 'NavLink-sc-1bdi3x9-0 jwNjNr NavBarLink__Container-sc-1xv1ifc-3 dFxBOe NavBarLink-sc-1xv1ifc-4 gmbciN';
             link.setAttribute('data-state','closed');
             // Always keep as last item of the primary group
             link.style.order = '9999';
