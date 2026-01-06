@@ -2,9 +2,6 @@ name: snapshot-refresh
 
 on:
   workflow_dispatch: {}
-  schedule:
-    # Nightly at 06:45 UTC (staggered from live-smoke)
-    - cron: "45 6 * * *"
 
 jobs:
   snapshot-refresh:
