@@ -6,7 +6,7 @@ Lightweight userscript that masks dollar amounts on Monarch Money to prevent sho
 - **Masks currency**: Replaces values like `$4,201.28`, `-$150.00`, and `($99.00)` with a normalized pattern such as `$*,***.**`.
 - **Hover to reveal**: When masking is on, hovering a masked value temporarily reveals the original amount.
 - **Sidebar toggle**: Inserts an “Obfuscate Balances” control in Monarch’s left sidebar to turn masking on/off. Your choice is saved locally.
-- **Supported pages**: `/dashboard`, `/accounts`, `/transactions`, `/objectives`, `/plan`, `/investments`.
+- **Supported pages**: `/dashboard`, `/accounts`, `/transactions`, `/goals` (Monarch's current objectives route), `/plan`, `/investments`.
 - **Performance‑aware**: Scans only known containers; when masking is OFF it stays effectively idle.
 
 ## Install (Tampermonkey)

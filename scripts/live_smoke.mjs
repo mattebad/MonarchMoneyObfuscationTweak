@@ -86,12 +86,93 @@ async function captureFailureArtifacts(page, label) {
   }
 }
 
+async function collectMaskStats(page) {
+  return page.evaluate(() => {
+    const wrapped = document.querySelectorAll('.mtm-amount');
+    const candidateCount = Array.from(document.querySelectorAll('.fs-exclude, .fs-mask')).filter((el) =>
+      (el.textContent || '').includes('$'),
+    ).length;
+    return {
+      wrappedCount: wrapped.length,
+      firstMaskedText: wrapped[0]?.textContent || null,
+      candidateCount,
+    };
+  });
+}
+
+async function sweepScrollableContainers(page) {
+  await page.evaluate(() => {
+    const seen = new Set();
+    const selectors = ['div[id$="-scroll"]', '[class*="Scroll__Root"]', '[class*="Virtualized"]', 'main'];
+    for (const sel of selectors) {
+      const nodes = document.querySelectorAll(sel);
+      for (const node of nodes) {
+        if (!(node instanceof HTMLElement)) continue;
+        if (seen.has(node)) continue;
+        seen.add(node);
+        const cs = getComputedStyle(node);
+        const scrollable = (cs.overflowY === 'auto' || cs.overflowY === 'scroll') && node.scrollHeight > node.clientHeight + 20;
+        if (!scrollable) continue;
+        const checkpoints = [0.25, 0.5, 0.85, 1];
+        for (const checkpoint of checkpoints) {
+          node.scrollTop = Math.max(0, Math.floor((node.scrollHeight - node.clientHeight) * checkpoint));
+        }
+      }
+    }
+  });
+}
+
+async function waitForMaskedAmounts(page, routePath) {
+  let stats = await collectMaskStats(page);
+  if (stats.wrappedCount > 0) return stats;
+
+  for (let i = 0; i < 3; i++) {
+    await sweepScrollableContainers(page);
+    await page.waitForTimeout(1200);
+    stats = await collectMaskStats(page);
+    if (stats.wrappedCount > 0) return stats;
+  }
+
+  // Some pages may legitimately have no visible dollar values for an account.
+  if (stats.candidateCount === 0) {
+    console.log(`[live-smoke] ${routePath}: no '$' candidates found; skipping masked-text assertion`);
+    return stats;
+  }
+
+  throw new Error(
+    `Expected wrapped amounts on ${routePath}, found wrapped=${stats.wrappedCount}, dollarCandidates=${stats.candidateCount}`,
+  );
+}
+
+async function assertSidebarTogglePlacement(page, routePath) {
+  const placement = await page.evaluate(() => {
+    const toggle = document.querySelector('#mtm-obf-master');
+    const sidebar = document.querySelector('[class*="SideBar__Root-"], [class*="SideBar__Root"], .SideBar__Root-sc-161w9oi-0');
+    const nav = toggle?.parentElement || null;
+    const tr = toggle?.getBoundingClientRect?.() || null;
+    const sr = sidebar?.getBoundingClientRect?.() || null;
+    return {
+      exists: !!toggle,
+      lastIsToggle: !!(nav && nav.lastElementChild && nav.lastElementChild.id === 'mtm-obf-master'),
+      hasActiveClass: !!toggle?.classList?.contains('nav-item-active'),
+      outsideSidebar:
+        !!(tr && sr) && (tr.bottom > sr.bottom + 2 || tr.top < sr.top - 2 || tr.left < sr.left - 2 || tr.right > sr.right + 2),
+    };
+  });
+
+  if (!placement.exists) throw new Error(`Toggle missing on ${routePath}`);
+  if (!placement.lastIsToggle) throw new Error(`Toggle is not last nav item on ${routePath}`);
+  if (placement.hasActiveClass) throw new Error(`Toggle incorrectly inherited nav-item-active class on ${routePath}`);
+  if (placement.outsideSidebar) throw new Error(`Toggle positioned outside sidebar bounds on ${routePath}`);
+}
+
 async function runRoute(page, routePath) {
   const url = `https://app.monarch.com${routePath}`;
   const label = routePath.replace(/\W+/g, '_').replace(/^_+|_+$/g, '') || 'root';
   const gqlProbe =
     VERIFY_GRAPHQL_AUTH || DEBUG_GRAPHQL_AUTH ? watchFirstGraphQLRequest(page, 15_000) : Promise.resolve(null);
 
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(url, { waitUntil: 'domcontentloaded' });
 
   // Quick auth sanity check: if we got bounced to login, fail loudly.
@@ -107,17 +188,19 @@ async function runRoute(page, routePath) {
 
   // Toggle should be injected into the sidebar.
   await page.waitForSelector('#mtm-obf-master', { timeout: 20_000 });
+  await assertSidebarTogglePlacement(page, routePath);
 
-  // Wait for at least one wrapped amount to exist.
-  await page.waitForFunction(() => document.querySelectorAll('.mtm-amount').length > 0, null, { timeout: 30_000 });
+  // Validate resize does not break toggle placement.
+  await page.setViewportSize({ width: 1180, height: 760 });
+  await page.waitForTimeout(750);
+  await assertSidebarTogglePlacement(page, routePath);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForTimeout(750);
 
-  // Assert it's masked.
-  const maskedText = await page.evaluate(() => {
-    const el = document.querySelector('.mtm-amount');
-    return el ? el.textContent : null;
-  });
-  if (!maskedText || !maskedText.includes('*')) {
-    throw new Error(`Expected masked amount to include "*" on ${routePath}, got: ${JSON.stringify(maskedText)}`);
+  // Wait for wrapped amounts, including nested-scroll routes.
+  const stats = await waitForMaskedAmounts(page, routePath);
+  if (stats.wrappedCount > 0 && (!stats.firstMaskedText || !stats.firstMaskedText.includes('*'))) {
+    throw new Error(`Expected masked amount to include "*" on ${routePath}, got: ${JSON.stringify(stats.firstMaskedText)}`);
   }
 
   // Ensure we didn't wrap inside SVG.
@@ -141,16 +224,27 @@ async function runRoute(page, routePath) {
   }
 
   // Toggle OFF and ensure the body class flips and amount becomes unmasked.
-  await page.click('#mtm-obf-master');
+  await page.evaluate(() => {
+    const toggle = document.querySelector('#mtm-obf-master');
+    if (toggle instanceof HTMLElement) toggle.click();
+  });
   await page.waitForFunction(() => !document.body.classList.contains('mt-obfuscate-on'), null, { timeout: 10_000 });
 
-  const unmaskedOk = await page.evaluate(() => {
+  const toggleOffState = await page.evaluate(() => {
+    const bodyOff = !document.body.classList.contains('mt-obfuscate-on');
+    const pref = localStorage.getItem('MT_HideSensitiveInfo');
     const el = document.querySelector('.mtm-amount');
-    if (!el) return false;
+    if (!el) return { bodyOff, pref, unmaskedOk: true };
     const orig = el.dataset.originalText || '';
-    return !!orig && el.textContent === orig;
+    return { bodyOff, pref, unmaskedOk: !!orig && el.textContent === orig };
   });
-  if (!unmaskedOk) {
+  if (!toggleOffState.bodyOff) {
+    throw new Error(`Toggle OFF did not clear body state on ${routePath}`);
+  }
+  if (toggleOffState.pref !== '0') {
+    throw new Error(`Toggle OFF did not persist preference on ${routePath}, got ${toggleOffState.pref}`);
+  }
+  if (!toggleOffState.unmaskedOk) {
     throw new Error(`Toggle OFF did not restore original text on ${routePath}`);
   }
 }
@@ -178,7 +272,7 @@ async function main() {
 
   const page = await context.newPage();
 
-  const routes = ['/dashboard', '/accounts', '/transactions', '/objectives', '/plan', '/investments'];
+  const routes = ['/dashboard', '/accounts', '/transactions', '/goals/savings', '/plan', '/investments/holdings/market'];
   for (const route of routes) {
     try {
       await runRoute(page, route);

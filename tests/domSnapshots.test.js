@@ -106,11 +106,20 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     expect(api.isActive()).toBe(false);
   });
 
+  it('route gating: goals routes remain active', () => {
+    const { api } = makeDom({ routePath: '/goals/savings', snapshotFile: 'objectives.html' });
+    expect(api.isActive()).toBe(true);
+  });
+
   it('sidebar injection: can insert toggle into dashboard sidebar in test mode', () => {
     const { document, api } = makeDom({ routePath: '/dashboard', snapshotFile: 'dashboard.html' });
     expect(document.getElementById('mtm-obf-master')).toBeNull();
     api.ensureSideNav();
-    expect(document.getElementById('mtm-obf-master')).toBeTruthy();
+    const toggle = document.getElementById('mtm-obf-master');
+    expect(toggle).toBeTruthy();
+    expect(toggle.classList.contains('nav-item-active')).toBe(false);
+    expect(toggle.querySelector('.mtm-nav-title')?.textContent).toBe('Obfuscate Balances');
+    expect(toggle.parentElement?.lastElementChild?.id).toBe('mtm-obf-master');
   });
 });
 

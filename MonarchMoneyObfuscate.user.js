@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Monarch Money - Obfuscate Balances
 // @namespace    https://tampermonkey.net/
-// @version      1.3.0
-// @description  Obfuscate dollar amounts on Monarch Money Dashboard/Accounts/Transactions/Objectives/Plan/Investments with performant observers
+// @version      1.3.1
+// @description  Obfuscate dollar amounts on Monarch Money Dashboard/Accounts/Transactions/Goals/Plan/Investments with performant observers
 // @match        https://app.monarch.com/*
 // @downloadURL  https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js
 // @updateURL    https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js
@@ -35,11 +35,11 @@
     }
     window.MTM_OBF_STATS = window.MTM_OBF_STATS || { scanRuns:0, candidatesSeen:0, watched:0, enqueued:0, queueRuns:0, wrapAttempts:0, wrapSuccess:0, observerStarts:0, observerStops:0 };
 
-    // [ MT: Obfuscate Dollar Amounts — scoped to /dashboard, /accounts, /transactions, /objectives, /plan, /investments ]
+    // [ MT: Obfuscate Dollar Amounts — scoped to /dashboard, /accounts, /transactions, /objectives|/goals, /plan, /investments ]
     // Injects minimal CSS used by the masking spans and the sidebar toggle; idempotent.
     (function MTM_Obfuscation_InitCSS(){
         if (document.getElementById('mtm-obf-css')) return;
-        const css = '\n.mtm-amount-wrap{position:relative;display:inline-block;margin-right:.25em}\nbody.mt-obfuscate-on .fs-mask .recharts-yAxis .recharts-text tspan{opacity:0}\n.mtm-nav-eye-btn{display:flex;align-items:center;gap:12px;cursor:pointer;color:inherit;background:transparent;border:0;width:100%;padding:8px 10px;border-radius:8px;text-align:left}\n.mtm-nav-eye-btn:hover{background:rgba(255,255,255,.06)}\n.mtm-nav-eye-btn .mtm-iconwrap{display:flex;align-items:center;justify-content:center;width:40px;height:40px}\n.mtm-nav-eye-btn .mtm-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px}\n.mtm-nav-eye-btn .mtm-icon svg{width:20px;height:20px;display:block}\n.mtm-nav-eye-btn .mtm-label{font-size:12px;white-space:nowrap}\n.mtm-nav-collapsed .mtm-label{display:none}\n#mtm-obf-master{position:sticky;bottom:8px;transition:none!important}\n#mtm-obf-master .LinkIcon-sc-1qcij8x-0{flex:0 0 auto;transition:none!important}\n.sidebar-collapsed #mtm-obf-master{height:40px!important;padding-top:0!important;padding-bottom:0!important;transition:none!important}\n.sidebar-collapsed #mtm-obf-master .NavBarLink__Title-sc-1xv1ifc-2{display:none!important}\n';
+        const css = '\n.mtm-amount-wrap{position:relative;display:inline-block;margin-right:.25em}\nbody.mt-obfuscate-on .fs-mask .recharts-yAxis .recharts-text tspan{opacity:0}\nbody.mt-obfuscate-on .recharts-yAxis .recharts-cartesian-axis-tick-value,\nbody.mt-obfuscate-on .recharts-yAxis .recharts-text,\nbody.mt-obfuscate-on .recharts-yAxis tspan{opacity:0!important}\nbody.mt-obfuscate-on input.fs-exclude,\nbody.mt-obfuscate-on input[class*="CurrencyInput__Input-"]{-webkit-text-security:disc;text-security:disc}\n.mtm-nav-eye-btn{display:flex;align-items:center;gap:12px;cursor:pointer;color:inherit;background:transparent;border:0;width:100%;padding:8px 10px;border-radius:8px;text-align:left}\n.mtm-nav-eye-btn:hover{background:rgba(255,255,255,.06)}\n.mtm-nav-eye-btn .mtm-iconwrap{display:flex;align-items:center;justify-content:center;width:40px;height:40px}\n.mtm-nav-eye-btn .mtm-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px}\n.mtm-nav-eye-btn .mtm-icon svg{width:20px;height:20px;display:block}\n.mtm-nav-eye-btn .mtm-label{font-size:12px;white-space:nowrap}\n.mtm-nav-collapsed .mtm-label{display:none}\n#mtm-obf-master{transition:none!important}\n#mtm-obf-master .mtm-nav-title{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}\n#mtm-obf-master .mtm-nav-iconwrap,\n#mtm-obf-master [class*="LinkIcon"]{flex:0 0 auto;transition:none!important}\n.sidebar-collapsed #mtm-obf-master,\n.mtm-nav-collapsed#mtm-obf-master,\n.mtm-nav-collapsed #mtm-obf-master{height:40px!important;padding-top:0!important;padding-bottom:0!important;transition:none!important}\n.sidebar-collapsed #mtm-obf-master .mtm-nav-title,\n.mtm-nav-collapsed #mtm-obf-master .mtm-nav-title{display:none!important}\n';
         function inject(){
             try {
                 if (document.getElementById('mtm-obf-css')) return;
@@ -59,7 +59,7 @@
 
     // Central configuration: allowed routes, scan containers, and elements to skip.
     const MTM_OBF_CFG = {
-        routeAllow: [/^\/dashboard(?:\/|$)/, /^\/accounts(?:\/|$)/, /^\/transactions(?:\/|$)/, /^\/objectives(?:\/|$)/, /^\/plan(?:\/|$)/, /^\/investments(?:\/|$)/],
+        routeAllow: [/^\/dashboard(?:\/|$)/, /^\/accounts(?:\/|$)/, /^\/transactions(?:\/|$)/, /^\/objectives(?:\/|$)/, /^\/goals(?:\/|$)/, /^\/plan(?:\/|$)/, /^\/investments(?:\/|$)/],
         containerAllow: [
             'main',
             '[data-rbd-droppable-id="accountGroups"]',
@@ -89,6 +89,9 @@
     // Precompiled regexes to avoid re-allocation on hot paths
     const MTM_RE_MONEY = /\$\s*[\d,.]+|\(\$\s*[\d,.]+\)|-\$\s*[\d,.]+/g;
     const MTM_RE_FIRST_SIMPLE = /\$\s*[\d,.]+/;
+    const MTM_RE_PLAIN_MONEY = /\d{1,3}(?:,\d{3})+(?:\.\d+)?/;
+    const MTM_RE_PLAIN_MONEY_GLOBAL = /\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/g;
+    const MTM_RE_CHART_DOLLAR = /\$\s*[-+]?\s*[\d,.]+(?:[KMBTkmbt])?/;
     // Hoisted dashboard selector reused in multiple places to avoid string rebuilds.
     var MTM_DASH_SEL = window.MTM_DASH_SEL || '[class*="CardTitle-"], [class*="DashboardWidget__Title-"], [class*="DashboardWidget__Description-"], [class*="GoalDashboardRow__Balance-"], [class*="RecurringTransactionsDashboardWidget__Amount-"], [class*="InvestmentsDashboardWidgetTopMoverRow__CurrentPriceText-"]';
     window.MTM_DASH_SEL = MTM_DASH_SEL;
@@ -110,9 +113,52 @@
         }
         if(didEnqueue) MTM_scheduleProcessQueue();
     },{root: null, rootMargin: '200px', threshold: 0}) : null);
+    // True when the candidate sits inside its own scroll container (virtualized panes/tables).
+    // For these, viewport IntersectionObserver can miss updates permanently, so process directly.
+    function MTM_hasScrollableAncestor(el){
+        var p = el && el.parentElement;
+        while(p && p !== document.body){
+            try {
+                var st = window.getComputedStyle(p);
+                if(st){
+                    var oy = st.overflowY;
+                    if((oy === 'auto' || oy === 'scroll') && p.scrollHeight > (p.clientHeight + 20)){
+                        return true;
+                    }
+                }
+            } catch(e) { void e; }
+            p = p.parentElement;
+        }
+        return false;
+    }
+    function MTM_hasMaskableText(txt){
+        if(!txt) return false;
+        return txt.indexOf('$') !== -1 || MTM_RE_PLAIN_MONEY.test(txt);
+    }
+    // Returns true when an element still contains raw '$' text outside our wrappers.
+    function MTM_hasUnwrappedDollarText(el){
+        if(!el || !(el instanceof Element)) return false;
+        var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+        while(walker.nextNode()){
+            var n = walker.currentNode;
+            var t = n && n.nodeValue || '';
+            if(!MTM_hasMaskableText(t)) continue;
+            var p = n.parentElement;
+            if(!p) continue;
+            if(p.closest && p.closest('.mtm-amount-wrap')) continue;
+            if(MTM_SKIP_CLOSEST && p.closest && p.closest(MTM_SKIP_CLOSEST)) continue;
+            return true;
+        }
+        return false;
+    }
     // Watch helper: observes element visibility or falls back to immediate queueing.
     function MTM_watch(el){
         if(!el || !MTM_isActive()) return;
+        if(MTM_hasScrollableAncestor(el)){
+            MTM_enqueue(el);
+            MTM_scheduleProcessQueue();
+            return;
+        }
         if(window.MTM_IO){
             try { window.MTM_IO.observe(el); } catch(e) { void e; MTM_enqueue(el); MTM_scheduleProcessQueue(); }
         } else {
@@ -123,8 +169,8 @@
     // Helper: quick eligibility check for processing.
     function MTM_shouldProcess(el){
         if(!el || !(el instanceof Element) || !el.isConnected) return false;
-        if(window.MTM_SEEN && window.MTM_SEEN.has(el)) return false;
-        if(el.querySelector && (el.querySelector('.mtm-amount'))) return false;
+        if(window.MTM_SEEN && window.MTM_SEEN.has(el) && !MTM_hasUnwrappedDollarText(el)) return false;
+        if(el.querySelector && el.querySelector('.mtm-amount') && !MTM_hasUnwrappedDollarText(el)) return false;
         if(el.closest && el.closest('.mtm-amount-wrap')) return false;
         return true;
     }
@@ -154,15 +200,15 @@
             const el = step.value;
             window.MTM_OBF_PENDING.delete(el);
             if(el && el.isConnected){
-                if(el.querySelector && el.querySelector('.mtm-amount')){ try{ window.MTM_SEEN.add(el);}catch(e){ void e; } }
-                else {
-                    try { window.MTM_OBF_STATS.wrapAttempts += 1; } catch(e) { void e; }
-                    if(MTM_wrapFirstAmount(el)) { processed+=1; try { window.MTM_OBF_STATS.wrapSuccess += 1; } catch(e) { void e; } }
-                }
+                try { window.MTM_OBF_STATS.wrapAttempts += 1; } catch(e) { void e; }
+                var wrappedCount = MTM_wrapAllAmounts(el, 10);
+                if(wrappedCount > 0) { processed+=1; try { window.MTM_OBF_STATS.wrapSuccess += wrappedCount; } catch(e) { void e; } }
+                try{ if(window.MTM_SEEN) window.MTM_SEEN.add(el);}catch(e){ void e; }
             }
             if(processed >= cap || (performance.now() - start) > budgetMs) break;
             step = it.next();
         }
+        MTM_applyAuxMasks();
         if(window.MTM_OBF_PENDING.size > 0){
             requestAnimationFrame(MTM_processPendingQueue);
         } else {
@@ -206,7 +252,7 @@
     }
     // Masks any dollar amounts within a string to a normalized $*,***.** shape.
     function MTM_maskMoneyValue(s){
-        return String(s).replace(MTM_RE_MONEY, function(m){
+        var out = String(s).replace(MTM_RE_MONEY, function(m){
             // Standardize to $*,***.** while keeping sign and parentheses
             var isNeg = m.trim().startsWith('-$');
             var isParen = /^\(\$/.test(m.trim());
@@ -215,6 +261,9 @@
             if(isParen) masked = '('+masked+')';
             return masked;
         });
+        // Also mask plain money-like values without a leading '$' (e.g. "7,622.26").
+        out = out.replace(MTM_RE_PLAIN_MONEY_GLOBAL, '*,***.**');
+        return out;
     }
 
     // Applies current masking state to all existing .mtm-amount nodes (toggle on/off).
@@ -227,25 +276,81 @@
             var next = on ? MTM_maskMoneyValue(orig) : orig;
             if(span.textContent !== next) { span.textContent = next; }
         });
+        MTM_applyAuxMasks();
+    }
+    // Masks remaining SVG currency labels not covered by wrapper logic.
+    function MTM_maskChartDollarLabels(){
+        var on = MTM_isObfEnabled();
+        var nodes = document.querySelectorAll('svg text, svg tspan');
+        for (var i=0; i<nodes.length; i++){
+            var n = nodes[i];
+            if(!n) continue;
+            var txt = n.textContent || '';
+            var orig = n.dataset && n.dataset.mtmChartOriginalText;
+            if(on){
+                if(orig){
+                    n.textContent = MTM_maskMoneyValue(orig);
+                    continue;
+                }
+                if(!MTM_RE_CHART_DOLLAR.test(txt)) continue;
+                n.dataset.mtmChartOriginalText = txt;
+                n.textContent = MTM_maskMoneyValue(txt);
+            } else if(orig){
+                n.textContent = orig;
+                delete n.dataset.mtmChartOriginalText;
+            }
+        }
+    }
+    // Masks read-only/live-rendered money values exposed through form controls.
+    function MTM_maskInputDollarValues(){
+        var on = MTM_isObfEnabled();
+        var fields = document.querySelectorAll('input, textarea');
+        for (var i=0; i<fields.length; i++){
+            var field = fields[i];
+            if(!field) continue;
+            var current = String(field.value || '');
+            var orig = field.dataset && field.dataset.mtmOriginalDollarValue;
+            if(on){
+                if(orig){
+                    field.value = MTM_maskMoneyValue(orig);
+                    continue;
+                }
+                if(current.indexOf('$') === -1) continue;
+                field.dataset.mtmOriginalDollarValue = current;
+                field.value = MTM_maskMoneyValue(current);
+            } else if(orig){
+                field.value = orig;
+                delete field.dataset.mtmOriginalDollarValue;
+            }
+        }
+    }
+    function MTM_applyAuxMasks(){
+        MTM_maskChartDollarLabels();
+        MTM_maskInputDollarValues();
     }
     // Wraps the first $ amount found within an element into .mtm-amount span; returns true if wrapped.
     function MTM_wrapFirstAmount(el){
         if(!el) return false;
         if(MTM_SKIP_CLOSEST && el.closest && el.closest(MTM_SKIP_CLOSEST)) return false;
         // Locate the first '$' using a TreeWalker; supports both simple and spanning cases.
-        var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+        var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+            acceptNode: function(node){
+                if(!node || !node.nodeValue) return NodeFilter.FILTER_SKIP;
+                var p = node.parentElement;
+                if(!p) return NodeFilter.FILTER_SKIP;
+                if(p.closest && p.closest('.mtm-amount-wrap')) return NodeFilter.FILTER_REJECT;
+                if(MTM_SKIP_CLOSEST && p.closest && p.closest(MTM_SKIP_CLOSEST)) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        });
         var startNode = null, endNode = null, startOffset = 0, endOffset = 0;
         while(walker.nextNode()){
             var txt = walker.currentNode.nodeValue || '';
             var sIdx = txt.indexOf('$');
             if(sIdx !== -1){
-                // Simple confirm for money after the '$'
-                var trail = txt.slice(sIdx);
-                if(MTM_RE_FIRST_SIMPLE.test(trail)){
-                    startNode = walker.currentNode;
-                    startOffset = sIdx;
-                    break;
-                }
+                startNode = walker.currentNode;
+                startOffset = sIdx;
+                break;
             }
         }
         if(!startNode) return false;
@@ -254,14 +359,24 @@
         var m2 = remain.match(MTM_RE_FIRST_SIMPLE);
         if(m2){ endNode = startNode; endOffset = startOffset + m2[0].length; }
         else {
-            // Walk forward to find remaining part if the amount spans nodes
+            // Walk forward to find remaining part when "$" and digits are split across nodes.
             endNode = startNode; endOffset = startNode.nodeValue.length;
+            var foundDigits = false;
             while(walker.nextNode()){
                 var t2 = walker.currentNode.nodeValue || '';
-                var mm = t2.match(/^[\d,.]+/);
-                if(mm){ endNode = walker.currentNode; endOffset = mm[0].length; if(mm[0].indexOf('.') !== -1) break; }
-                else { break; }
+                var mm = t2.match(/^\s*[\d,.]+/);
+                if(mm){
+                    foundDigits = true;
+                    endNode = walker.currentNode;
+                    endOffset = mm[0].length;
+                    if(/[0-9]/.test(mm[0])) break;
+                    continue;
+                }
+                if(foundDigits) break;
+                if(/^\s*$/.test(t2)) continue;
+                break;
             }
+            if(!foundDigits) return false;
         }
         if(!startNode || !endNode) return false;
         try {
@@ -290,6 +405,59 @@
             return false;
         }
     }
+    // Wraps the first money-like plain numeric value (e.g. "64,075.00") in an element.
+    function MTM_wrapFirstPlainAmount(el){
+        if(!el) return false;
+        if(MTM_SKIP_CLOSEST && el.closest && el.closest(MTM_SKIP_CLOSEST)) return false;
+        var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+            acceptNode: function(node){
+                if(!node || !node.nodeValue) return NodeFilter.FILTER_SKIP;
+                var p = node.parentElement;
+                if(!p) return NodeFilter.FILTER_SKIP;
+                if(p.closest && p.closest('.mtm-amount-wrap')) return NodeFilter.FILTER_REJECT;
+                if(MTM_SKIP_CLOSEST && p.closest && p.closest(MTM_SKIP_CLOSEST)) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        });
+        while(walker.nextNode()){
+            var txt = walker.currentNode.nodeValue || '';
+            if(txt.indexOf('$') !== -1) continue;
+            var m = txt.match(MTM_RE_PLAIN_MONEY);
+            if(!m) continue;
+            try {
+                var r = document.createRange();
+                var s = m.index || 0;
+                var e = s + m[0].length;
+                if(!walker.currentNode.isConnected || !el.isConnected || !el.contains(walker.currentNode)) return false;
+                r.setStart(walker.currentNode, s);
+                r.setEnd(walker.currentNode, e);
+                var selected = r.extractContents();
+                var wrap = MTM_buildWrap(selected.textContent || m[0]);
+                wrap.appendChild(document.createTextNode(' '));
+                r.insertNode(wrap);
+                return true;
+            } catch(e2){
+                void e2;
+                return false;
+            }
+        }
+        return false;
+    }
+    // Wraps multiple dollar amounts in the same element (eg "$x of $y").
+    function MTM_wrapAllAmounts(el, maxWraps){
+        var wraps = 0;
+        var cap = maxWraps || 8;
+        for (var i=0; i<cap; i++){
+            if(!MTM_wrapFirstAmount(el)) break;
+            wraps += 1;
+        }
+        // Fallback for values rendered without '$' prefix (e.g. some dashboard goals/investment widgets).
+        for (var j=0; j<cap; j++){
+            if(!MTM_wrapFirstPlainAmount(el)) break;
+            wraps += 1;
+        }
+        return wraps;
+    }
     // Builds and returns the wrapper span structure for a masked amount.
     function MTM_buildWrap(amountText){
         const wrap = document.createElement('span');
@@ -300,6 +468,33 @@
         amt.textContent = MTM_isObfEnabled() ? MTM_maskMoneyValue(amountText) : amountText;
         wrap.appendChild(amt);
         return wrap;
+    }
+    // Finds leaf-ish elements with '$' in text and no nested '$' descendants.
+    function MTM_collectDollarLeafCandidates(scope, max){
+        var out = [];
+        var cap = max || 300;
+        var pool = scope.querySelectorAll('span, div, p, td, th, li, a, h1, h2, h3, h4, h5');
+        for (var i=0; i<pool.length; i++){
+            var el = pool[i];
+            if(!el || !MTM_shouldProcess(el)) continue;
+            if(MTM_SKIP_CLOSEST && el.closest && el.closest(MTM_SKIP_CLOSEST)) continue;
+            var txt = el.textContent || '';
+            if(!MTM_hasMaskableText(txt)) continue;
+            // Avoid wrapping container nodes when a deeper node already carries the dollar value.
+            var childHasDollar = false;
+            try {
+                if(el.children && el.children.length){
+                    for (var ci=0; ci<el.children.length; ci++){
+                        var ct = el.children[ci] && el.children[ci].textContent || '';
+                        if(MTM_hasMaskableText(ct)){ childHasDollar = true; break; }
+                    }
+                }
+            } catch(e) { void e; }
+            if(childHasDollar) continue;
+            out.push(el);
+            if(out.length >= cap) break;
+        }
+        return out;
     }
     // Scans allowed containers (or a given root) and wraps simple currency occurrences once.
     function MTM_scanAndWrap(root){
@@ -315,7 +510,7 @@
                 if(!MTM_shouldProcess(el)) continue;
                 if(MTM_SKIP_CLOSEST && el.closest && el.closest(MTM_SKIP_CLOSEST)) continue;
                 var txt = el.textContent || '';
-                if(txt.indexOf('$') === -1) continue;
+                if(!MTM_hasMaskableText(txt)) continue;
                 try { window.MTM_OBF_STATS.watched += 1; } catch(e) { void e; }
                 MTM_watch(el);
             }
@@ -331,11 +526,30 @@
                 var dash = dashCandidates.filter(function(el){
                     if(el.querySelector('.fs-exclude')) return false; // let fs-exclude path handle it
                     if(el.querySelector('.mtm-amount')) return false;  // already processed inside
-                    return /\$/.test(el.textContent || '') && !el.closest('.mtm-amount-wrap');
+                    return MTM_hasMaskableText(el.textContent || '') && !el.closest('.mtm-amount-wrap');
                 });
                 for (var di=0; di<dash.length && di<300; di++) { MTM_watch(dash[di]); }
+                // Fallback pass for widgets with plain numeric values (goals/top-movers) outside static selectors.
+                var dashLeaves = MTM_collectDollarLeafCandidates(scope, 450);
+                for (var dl=0; dl<dashLeaves.length; dl++) { MTM_watch(dashLeaves[dl]); }
+            }
+            if(/^\/(?:goals|objectives|plan)(?:\/|$)/.test(path)){
+                var moneyLeaves = MTM_collectDollarLeafCandidates(scope, 450);
+                for (var gi=0; gi<moneyLeaves.length; gi++) { MTM_watch(moneyLeaves[gi]); }
+                if(/^\/plan(?:\/|$)/.test(path)){
+                    // Plan table often splits "$" and number into sibling nodes; include compact containers directly.
+                    var planExtra = Array.from(scope.querySelectorAll('div, span, p, td, th')).filter(function(el){
+                        if(!MTM_shouldProcess(el)) return false;
+                        if(MTM_SKIP_CLOSEST && el.closest && el.closest(MTM_SKIP_CLOSEST)) return false;
+                        var t = (el.textContent || '').replace(/\s+/g, '');
+                        if(!MTM_hasMaskableText(t)) return false;
+                        return t.length > 1 && t.length <= 40;
+                    });
+                    for (var pi=0; pi<planExtra.length && pi<350; pi++) { MTM_watch(planExtra[pi]); }
+                }
             }
         });
+        MTM_applyAuxMasks();
     }
     // MutationObserver wiring: enqueues relevant added/updated nodes and batches processing.
     (function MTM_Observer(){
@@ -364,7 +578,7 @@
                                     if(MTM_shouldProcess(node)){
                                         if(MTM_SKIP_CLOSEST && node.closest && node.closest(MTM_SKIP_CLOSEST)) { continue; }
                                         var t0 = node.textContent || '';
-                                        if(t0.indexOf('$') !== -1) { if(window.MTM_IO) { MTM_watch(node); } else { MTM_enqueue(node); } }
+                                        if(MTM_hasMaskableText(t0)) { if(window.MTM_IO) { MTM_watch(node); } else { MTM_enqueue(node); } }
                                     }
                                 }
                                 if(node.querySelectorAll){
@@ -373,7 +587,7 @@
                                         if(!MTM_shouldProcess(list[k])) continue;
                                         if(MTM_SKIP_CLOSEST && list[k].closest && list[k].closest(MTM_SKIP_CLOSEST)) continue;
                                         var t1 = list[k].textContent || '';
-                                        if(t1.indexOf('$') === -1) continue;
+                                        if(!MTM_hasMaskableText(t1)) continue;
                                         if(window.MTM_IO) { MTM_watch(list[k]); } else { MTM_enqueue(list[k]); }
                                     }
                                 }
@@ -383,6 +597,29 @@
                                     if(node.querySelectorAll){
                                         var dqs = node.querySelectorAll(MTM_DASH_SEL);
                                         for(var dk=0; dk<dqs.length; dk++){ if(MTM_shouldProcess(dqs[dk])) { if(window.MTM_IO) { MTM_watch(dqs[dk]); } else { MTM_enqueue(dqs[dk]); } } }
+                                        var dLeaves = MTM_collectDollarLeafCandidates(node, 150);
+                                        for(var dli=0; dli<dLeaves.length; dli++){ if(MTM_shouldProcess(dLeaves[dli])) { if(window.MTM_IO) { MTM_watch(dLeaves[dli]); } else { MTM_enqueue(dLeaves[dli]); } } }
+                                    }
+                                }
+                                if(/^\/(?:goals|objectives|plan)(?:\/|$)/.test(path)){
+                                    if(node.matches && MTM_shouldProcess(node)){
+                                        var nt = node.textContent || '';
+                                        if(MTM_hasMaskableText(nt)) { if(window.MTM_IO) { MTM_watch(node); } else { MTM_enqueue(node); } }
+                                    }
+                                    if(node.querySelectorAll){
+                                        var leaves = MTM_collectDollarLeafCandidates(node, 150);
+                                        for(var li=0; li<leaves.length; li++){ if(MTM_shouldProcess(leaves[li])) { if(window.MTM_IO) { MTM_watch(leaves[li]); } else { MTM_enqueue(leaves[li]); } } }
+                                        if(/^\/plan(?:\/|$)/.test(path)){
+                                            var pextra = node.querySelectorAll('div, span, p, td, th');
+                                            for(var px=0; px<pextra.length && px<180; px++){
+                                                var pe = pextra[px];
+                                                if(!MTM_shouldProcess(pe)) continue;
+                                                var pt = (pe.textContent || '').replace(/\s+/g, '');
+                                                if(!MTM_hasMaskableText(pt)) continue;
+                                                if(pt.length <= 1 || pt.length > 40) continue;
+                                                if(window.MTM_IO) { MTM_watch(pe); } else { MTM_enqueue(pe); }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -391,14 +628,18 @@
                             if(p){
                                 // Ignore our own text swaps (hover reveal / applyState) to avoid observer churn.
                                 if(p.closest && p.closest('.mtm-amount-wrap')) { continue; }
-                                // Early bail when no '$' in updated text
-                                if(m.target && typeof m.target.nodeValue === 'string' && m.target.nodeValue.indexOf('$') === -1) { continue; }
+                                // Early bail when updated text has no maskable token.
+                                if(m.target && typeof m.target.nodeValue === 'string' && !MTM_hasMaskableText(m.target.nodeValue)) { continue; }
                                 var host = p.matches('.fs-exclude, .fs-mask') ? p : p.closest('.fs-exclude, .fs-mask');
                                 if(host && MTM_shouldProcess(host)) { if(window.MTM_IO) { MTM_watch(host); } else { MTM_enqueue(host); } }
                                 // Dashboard text nodes updating in place
                                 if(!host && /^\/dashboard(?:\/|$)/.test(path)){
                                     var dashHost = p.matches(MTM_DASH_SEL) ? p : p.closest(MTM_DASH_SEL);
                                     if(dashHost && MTM_shouldProcess(dashHost)) { if(window.MTM_IO) { MTM_watch(dashHost); } else { MTM_enqueue(dashHost); } }
+                                }
+                                if(!host && /^\/(?:goals|objectives|plan)(?:\/|$)/.test(path)){
+                                    var moneyHost = p;
+                                    if(moneyHost && MTM_shouldProcess(moneyHost)) { if(window.MTM_IO) { MTM_watch(moneyHost); } else { MTM_enqueue(moneyHost); } }
                                 }
                             }
                         }
@@ -525,15 +766,15 @@
             var sidebarRoot = document.querySelector('[class*="SideBar__Root-"], [class*="SideBar__Root"], .SideBar__Root-sc-161w9oi-0');
             var sideContent = sidebarRoot && (sidebarRoot.querySelector('[class*="SideBar__Content-"], [class*="SideBar__Content"], .SideBar__Content-sc-161w9oi-4') || null);
             var firstLink =
-                (sideContent && (sideContent.querySelector('a[href="/dashboard"]') || sideContent.querySelector('a[href="/accounts"]') || sideContent.querySelector('a[href="/transactions"]') || sideContent.querySelector('a[data-discover][href^="/"]'))) ||
-                document.querySelector('a[href="/dashboard"], a[href="/accounts"], a[href="/transactions"]');
+                (sideContent && (sideContent.querySelector('a[href="/dashboard"]') || sideContent.querySelector('a[href="/accounts"]') || sideContent.querySelector('a[href="/transactions"]') || sideContent.querySelector('a[href^="/goals"]') || sideContent.querySelector('a[data-discover][href^="/"]'))) ||
+                document.querySelector('a[href="/dashboard"], a[href="/accounts"], a[href="/transactions"], a[href^="/goals"]');
             if(!firstLink) return;
             var navList = firstLink.parentElement;
             // Walk up to the container that holds multiple primary nav links (more stable than styled-component classnames).
             var hops = 0;
             while(navList && sideContent && navList !== sideContent && hops < 6){
                 var count = 0;
-                try { count = navList.querySelectorAll('a[href="/dashboard"], a[href="/accounts"], a[href="/transactions"]').length; } catch(e) { void e; }
+                try { count = navList.querySelectorAll('a[href="/dashboard"], a[href="/accounts"], a[href="/transactions"], a[href^="/goals"]').length; } catch(e) { void e; }
                 if(count >= 2) break;
                 navList = navList.parentElement;
                 hops++;
@@ -548,14 +789,26 @@
             // Prefer copying Monarch's current nav link className to match styling (styled-components hashes can change).
             // Fallback to a known-good class list from snapshots if className is missing.
             link.className = (firstLink && firstLink.className) ? firstLink.className : 'NavLink-sc-1bdi3x9-0 jwNjNr NavBarLink__Container-sc-1xv1ifc-3 dFxBOe NavBarLink-sc-1xv1ifc-4 gmbciN';
+            try {
+                link.className = link.className.split(/\s+/).filter(function(cls){
+                    if(!cls) return false;
+                    if(cls === 'nav-item-active') return false;
+                    if(cls.indexOf('in-aria-') !== -1) return false;
+                    return true;
+                }).join(' ');
+            } catch(e) { void e; }
             link.setAttribute('data-state','closed');
             // Always keep as last item of the primary group
             link.style.order = '9999';
 
-            var iconWrap = document.createElement('div');
-            iconWrap.className = 'Flex-sc-165659u-0 LinkIcon-sc-1qcij8x-0 tRmOx jfWCtJ';
-            var iconSpan = document.createElement('span');
-            iconSpan.className = 'Icon__MonarchIcon-sc-1ja3cr5-0 hyumnu mtm-eye-icon';
+            var iconTemplateWrap = firstLink.querySelector('[class*="LinkIcon"], [class*="NavBarLink__Icon"], [class*="NavBarLink__Leading"], .LinkIcon-sc-1qcij8x-0');
+            var iconTemplate = iconTemplateWrap && iconTemplateWrap.querySelector('span, i, [class*="Icon"]');
+            var iconWrap = document.createElement((iconTemplateWrap && iconTemplateWrap.tagName) ? iconTemplateWrap.tagName.toLowerCase() : 'div');
+            iconWrap.className = iconTemplateWrap && iconTemplateWrap.className ? iconTemplateWrap.className : '';
+            iconWrap.classList.add('mtm-nav-iconwrap');
+            var iconSpan = document.createElement((iconTemplate && iconTemplate.tagName) ? iconTemplate.tagName.toLowerCase() : 'span');
+            iconSpan.className = iconTemplate && iconTemplate.className ? iconTemplate.className : '';
+            iconSpan.classList.add('mtm-eye-icon');
             function setIcon(on){
                 iconSpan.innerHTML = on
                     ? '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="2"/><path d="M22 2 2 22" stroke="currentColor" stroke-width="2"/></svg>'
@@ -565,7 +818,7 @@
             iconWrap.appendChild(iconSpan);
 
             var title = document.createElement('span');
-            title.className = 'NavBarLink__Title-sc-1xv1ifc-2';
+            title.className = 'mtm-nav-title';
             title.textContent = 'Obfuscate Balances';
 
             link.appendChild(iconWrap);
@@ -597,22 +850,59 @@
             sidebarRoot = sidebarRoot || firstLink.closest('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"]') || document.querySelector('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"]');
             var setCollapsed = function(){
                 var collapsed = !!(sidebarRoot && sidebarRoot.classList.contains('sidebar-collapsed'));
+                if(!collapsed && sidebarRoot){
+                    var ariaExpanded = sidebarRoot.getAttribute('aria-expanded');
+                    if(ariaExpanded === 'false') collapsed = true;
+                    var width = 0;
+                    try { width = sidebarRoot.getBoundingClientRect().width; } catch(e) { void e; }
+                    if(!collapsed && width > 0 && width < 120) collapsed = true;
+                }
                 link.classList.toggle('mtm-nav-collapsed', collapsed);
             };
             setCollapsed();
             if(sidebarRoot){
                 var collapseObs = new MutationObserver(function(){ setCollapsed(); });
-                collapseObs.observe(sidebarRoot, { attributes: true, attributeFilter: ['class'] });
+                collapseObs.observe(sidebarRoot, { attributes: true, attributeFilter: ['class', 'style', 'aria-expanded'] });
                 window.MTM_SIDENAV_COLLAPSE_OBS = collapseObs;
             }
         }
 
+        var ensureTimer = null;
+        function scheduleEnsure(delay){
+            if(ensureTimer) clearTimeout(ensureTimer);
+            ensureTimer = setTimeout(function(){
+                ensureTimer = null;
+                ensure();
+            }, delay || 0);
+        }
+
         window.MTM_OBF_ENSURE_SIDENAV = ensure;
         if(MTM_TEST_MODE) return;
-        // Try multiple times as sidebar mounts
+        // Try repeatedly as sidebar mounts/re-renders. Keep window long enough for slow auth/data loads.
+        scheduleEnsure(0);
         var tries = 0; var intv = setInterval(function(){
-            tries++; ensure(); if(document.getElementById('mtm-obf-master') || tries > 20) clearInterval(intv);
+            tries++; ensure(); if(document.getElementById('mtm-obf-master') || tries > 120) clearInterval(intv);
         }, 500);
+        // Re-ensure after route changes and late-rendered sidebar shells.
+        window.addEventListener('load', function(){ scheduleEnsure(250); });
+        window.addEventListener('popstate', function(){ scheduleEnsure(250); });
+        var _ps2 = history.pushState;
+        history.pushState = function(){
+            var r = _ps2.apply(this, arguments);
+            scheduleEnsure(250);
+            return r;
+        };
+        var _rs2 = history.replaceState;
+        history.replaceState = function(){
+            var r = _rs2.apply(this, arguments);
+            scheduleEnsure(250);
+            return r;
+        };
+        var ensureObs = new MutationObserver(function(){
+            if(document.getElementById('mtm-obf-master')) return;
+            scheduleEnsure(200);
+        });
+        try { ensureObs.observe(document.documentElement || document.body, { childList: true, subtree: true }); } catch(e) { void e; }
     })();
 
     // Test harness hooks (only populated when window.__MTM_OBF_TEST__ is truthy).
