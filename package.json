@@ -6,6 +6,7 @@
     "test": "vitest run --reporter=default",
     "auth:export": "node scripts/export_storage_state.mjs",
     "live:smoke": "node scripts/live_smoke.mjs",
+    "live:visual:capture": "node scripts/live_visual_capture.mjs",
     "snapshot:refresh": "node scripts/refresh_route_doms.mjs",
     "snapshot:sanitize": "node scripts/sanitize_route_doms.mjs"
   },

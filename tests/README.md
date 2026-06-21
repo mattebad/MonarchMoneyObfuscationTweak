@@ -84,4 +84,69 @@ npm install -D playwright@latest
 npx playwright install chromium
 ```
 
+## Local visual review capture (privacy-safe)
+Use this when you want screenshots for manual/agent visual inspection without committing images.
+
+- Output folder (git-ignored): `../playwright-artifacts/visual-review/<timestamp>/`
+- Includes `manifest.json` plus screenshots named:
+  - `route__navMode__state__viewport__checkpoint.png`
+
+### Run locally
+
+```bash
+cd MonarchMoneyObfuscationTweak
+MONARCH_STORAGE_STATE_PATH=monarch.storageState.json npm run live:visual:capture
+```
+
+By default this runs **fast profile**:
+- states: `on`
+- nav modes: `direct,reload`
+- checkpoints: `top,bottom`
+- viewport screenshots (not full-page)
+
+Use full profile when you need exhaustive capture:
+
+```bash
+MONARCH_STORAGE_STATE_PATH=monarch.storageState.json \
+MONARCH_VISUAL_PROFILE=full \
+npm run live:visual:capture
+```
+
+### Optional filters (faster iteration)
+
+```bash
+# Single route + viewport
+MONARCH_STORAGE_STATE_PATH=monarch.storageState.json \
+MONARCH_VISUAL_ROUTES=dashboard \
+MONARCH_VISUAL_VIEWPORTS=desktop \
+npm run live:visual:capture
+
+# States: on,off (fast default is on)
+MONARCH_STORAGE_STATE_PATH=monarch.storageState.json \
+MONARCH_VISUAL_STATES=on \
+npm run live:visual:capture
+```
+
+```bash
+# Optional advanced tuning
+MONARCH_STORAGE_STATE_PATH=monarch.storageState.json \
+MONARCH_VISUAL_NAV_MODES=direct,spa,reload \
+MONARCH_VISUAL_CHECKPOINTS=top,mid,bottom \
+MONARCH_VISUAL_CONTENT_READY_TIMEOUT_MS=9000 \
+MONARCH_VISUAL_FULL_PAGE=1 \
+npm run live:visual:capture
+```
+
+### Privacy guardrails
+- Do not commit files from `playwright-artifacts/`.
+- ON-state captures are obfuscated; OFF-state captures can expose real account data.
+- Prefer reviewing OFF-state screenshots locally only.
+
+### Visual review checklist
+- Obfuscation ON masks values across each supported route.
+- Obfuscation OFF restores original values.
+- Scroll updates still mask/unmask newly visible rows/cards.
+- Hard reload and sidebar nav transitions keep behavior consistent.
+- Sidebar toggle stays visible and positioned correctly at each viewport.
+
 

@@ -4,6 +4,8 @@ node_modules/
 # Playwright / auth state (DO NOT COMMIT)
 monarch.storageState.json
 playwright-artifacts/
+# Local visual inspection captures (always uncommitted)
+playwright-artifacts/visual-review/
 
 
 
