@@ -39,7 +39,7 @@
     // Injects minimal CSS used by the masking spans and the sidebar toggle; idempotent.
     (function MTM_Obfuscation_InitCSS(){
         if (document.getElementById('mtm-obf-css')) return;
-        const css = '\n.mtm-amount-wrap{position:relative;display:inline-block;margin-right:.25em}\nbody.mt-obfuscate-on .fs-mask .recharts-yAxis .recharts-text tspan{opacity:0}\nbody.mt-obfuscate-on .recharts-yAxis .recharts-cartesian-axis-tick-value,\nbody.mt-obfuscate-on .recharts-yAxis .recharts-text,\nbody.mt-obfuscate-on .recharts-yAxis tspan{opacity:0!important}\nbody.mt-obfuscate-on input.fs-exclude,\nbody.mt-obfuscate-on input[class*="CurrencyInput__Input-"]{-webkit-text-security:disc;text-security:disc}\n.mtm-nav-eye-btn{display:flex;align-items:center;gap:12px;cursor:pointer;color:inherit;background:transparent;border:0;width:100%;padding:8px 10px;border-radius:8px;text-align:left}\n.mtm-nav-eye-btn:hover{background:rgba(255,255,255,.06)}\n.mtm-nav-eye-btn .mtm-iconwrap{display:flex;align-items:center;justify-content:center;width:40px;height:40px}\n.mtm-nav-eye-btn .mtm-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px}\n.mtm-nav-eye-btn .mtm-icon svg{width:20px;height:20px;display:block}\n.mtm-nav-eye-btn .mtm-label{font-size:12px;white-space:nowrap}\n.mtm-nav-collapsed .mtm-label{display:none}\n#mtm-obf-master{transition:none!important}\n#mtm-obf-master .mtm-nav-title{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}\n#mtm-obf-master .mtm-nav-iconwrap,\n#mtm-obf-master [class*="LinkIcon"]{flex:0 0 auto;transition:none!important}\n.sidebar-collapsed #mtm-obf-master,\n.mtm-nav-collapsed#mtm-obf-master,\n.mtm-nav-collapsed #mtm-obf-master{height:40px!important;padding-top:0!important;padding-bottom:0!important;transition:none!important}\n.sidebar-collapsed #mtm-obf-master .mtm-nav-title,\n.mtm-nav-collapsed #mtm-obf-master .mtm-nav-title{display:none!important}\n';
+        const css = '\n.mtm-amount-wrap{position:relative;display:inline-block;margin-right:.25em}\nbody.mt-obfuscate-on .fs-mask .recharts-yAxis .recharts-text tspan{opacity:0}\nbody.mt-obfuscate-on .recharts-yAxis .recharts-cartesian-axis-tick-value,\nbody.mt-obfuscate-on .recharts-yAxis .recharts-text,\nbody.mt-obfuscate-on .recharts-yAxis tspan{opacity:0!important}\nbody.mt-obfuscate-on input.fs-exclude,\nbody.mt-obfuscate-on input[class*="CurrencyInput__Input-"]{-webkit-text-security:disc;text-security:disc}\n.mtm-nav-eye-btn{display:flex;align-items:center;gap:12px;cursor:pointer;color:inherit;background:transparent;border:0;width:100%;padding:8px 10px;border-radius:8px;text-align:left}\n.mtm-nav-eye-btn:hover{background:rgba(255,255,255,.06)}\n.mtm-nav-eye-btn .mtm-iconwrap{display:flex;align-items:center;justify-content:center;width:40px;height:40px}\n.mtm-nav-eye-btn .mtm-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px}\n.mtm-nav-eye-btn .mtm-icon svg{width:20px;height:20px;display:block}\n.mtm-nav-eye-btn .mtm-label{font-size:12px;white-space:nowrap}\n.mtm-nav-collapsed .mtm-label{display:none}\n#mtm-obf-master{display:flex;align-items:center;gap:12px;transition:none!important}\n#mtm-obf-master .mtm-nav-title{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}\n#mtm-obf-master .mtm-nav-iconwrap{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:20px;transition:none!important}\n#mtm-obf-master .mtm-eye-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;line-height:1}\n#mtm-obf-master .mtm-eye-icon::before,\n#mtm-obf-master .mtm-eye-icon::after{content:none!important}\n#mtm-obf-master .mtm-eye-icon svg{width:20px;height:20px;display:block}\n.sidebar-collapsed #mtm-obf-master,\n.mtm-nav-collapsed#mtm-obf-master,\n.mtm-nav-collapsed #mtm-obf-master{height:40px!important;padding-top:0!important;padding-bottom:0!important;transition:none!important}\n.sidebar-collapsed #mtm-obf-master .mtm-nav-title,\n.mtm-nav-collapsed #mtm-obf-master .mtm-nav-title{display:none!important}\n';
         function inject(){
             try {
                 if (document.getElementById('mtm-obf-css')) return;
@@ -760,24 +760,83 @@
         // In test mode, we export the ensure() helper and avoid timers/observers that keep the event loop alive.
         if (window.MTM_OBF_SIDENAV_WIRED) return;
         window.MTM_OBF_SIDENAV_WIRED = true;
+        function MTM_parsePath(href){
+            try { return new URL(href || '', window.location.origin).pathname || ''; } catch(e) { void e; return ''; }
+        }
+        function MTM_isPrimaryNavHref(href){
+            var p = MTM_parsePath(href);
+            return /^\/(?:dashboard|accounts|transactions|cash-flow|reports|budget|recurring|goals|investments|forecast|advice)(?:\/|$)/.test(p);
+        }
+        function MTM_collectPrimaryNavLinks(root){
+            if(!root) return [];
+            var out = [];
+            var all = root.querySelectorAll('a[href]');
+            for (var i=0; i<all.length; i++){
+                var a = all[i];
+                if(!MTM_isPrimaryNavHref(a.getAttribute('href'))) continue;
+                var txt = (a.textContent || '').replace(/\s+/g,' ').trim();
+                if(!txt) continue; // exclude logo/dashboard icon links in sticky header
+                out.push(a);
+            }
+            return out;
+        }
+        // Finds smallest ancestor that still contains most visible primary nav links.
+        function MTM_findPrimaryNavList(sidebarRoot, sideContent){
+            var searchRoot = sideContent || sidebarRoot || document;
+            var links = MTM_collectPrimaryNavLinks(searchRoot);
+            if(!links.length) return null;
+            var best = null;
+            var bestCount = 0;
+            var bestDesc = Number.POSITIVE_INFINITY;
+            for (var li=0; li<links.length; li++){
+                var p = links[li].parentElement;
+                var hops = 0;
+                while(p && p !== searchRoot && hops < 9){
+                    var count = 0;
+                    for (var j=0; j<links.length; j++){ if(p.contains(links[j])) count++; }
+                    if(count >= 4){
+                        var desc = 0;
+                        try { desc = p.querySelectorAll('a[href]').length; } catch(e2) { void e2; }
+                        if(!best || count > bestCount || (count === bestCount && desc < bestDesc)){
+                            best = p;
+                            bestCount = count;
+                            bestDesc = desc;
+                        }
+                    }
+                    p = p.parentElement;
+                    hops++;
+                }
+            }
+            return best;
+        }
 
         function ensure(){
             // Insert as a native nav item at the end of the primary list
             var sidebarRoot = document.querySelector('[class*="SideBar__Root-"], [class*="SideBar__Root"], .SideBar__Root-sc-161w9oi-0');
             var sideContent = sidebarRoot && (sidebarRoot.querySelector('[class*="SideBar__Content-"], [class*="SideBar__Content"], .SideBar__Content-sc-161w9oi-4') || null);
-            var firstLink =
-                (sideContent && (sideContent.querySelector('a[href="/dashboard"]') || sideContent.querySelector('a[href="/accounts"]') || sideContent.querySelector('a[href="/transactions"]') || sideContent.querySelector('a[href^="/goals"]') || sideContent.querySelector('a[data-discover][href^="/"]'))) ||
-                document.querySelector('a[href="/dashboard"], a[href="/accounts"], a[href="/transactions"], a[href^="/goals"]');
-            if(!firstLink) return;
-            var navList = firstLink.parentElement;
-            // Walk up to the container that holds multiple primary nav links (more stable than styled-component classnames).
-            var hops = 0;
-            while(navList && sideContent && navList !== sideContent && hops < 6){
-                var count = 0;
-                try { count = navList.querySelectorAll('a[href="/dashboard"], a[href="/accounts"], a[href="/transactions"], a[href^="/goals"]').length; } catch(e) { void e; }
-                if(count >= 2) break;
-                navList = navList.parentElement;
-                hops++;
+            var navList = MTM_findPrimaryNavList(sidebarRoot, sideContent);
+            var firstLink = null;
+            var navLinks = MTM_collectPrimaryNavLinks(navList || sideContent || sidebarRoot || document);
+            for (var ni=0; ni<navLinks.length; ni++){
+                if(MTM_parsePath(navLinks[ni].getAttribute('href')) === '/dashboard'){ firstLink = navLinks[ni]; break; }
+            }
+            if(!firstLink && navLinks.length) firstLink = navLinks[0];
+            if(!firstLink){
+                var fallbackLinks = MTM_collectPrimaryNavLinks(sideContent || sidebarRoot || document);
+                if(fallbackLinks.length) firstLink = fallbackLinks[0];
+            }
+            if(!firstLink && !navList) return;
+            if(!navList && firstLink) navList = firstLink.parentElement;
+            // Fallback walk-up only when our strict detector did not find a stable primary list.
+            if(!MTM_findPrimaryNavList(sidebarRoot, sideContent)){
+                var hops = 0;
+                while(navList && sideContent && navList !== sideContent && hops < 6){
+                    var count = 0;
+                    try { count = MTM_collectPrimaryNavLinks(navList).length; } catch(e3) { void e3; }
+                    if(count >= 4) break;
+                    navList = navList.parentElement;
+                    hops++;
+                }
             }
             if(!navList) return;
             if(document.getElementById('mtm-obf-master')) return;
@@ -801,13 +860,10 @@
             // Always keep as last item of the primary group
             link.style.order = '9999';
 
-            var iconTemplateWrap = firstLink.querySelector('[class*="LinkIcon"], [class*="NavBarLink__Icon"], [class*="NavBarLink__Leading"], .LinkIcon-sc-1qcij8x-0');
-            var iconTemplate = iconTemplateWrap && iconTemplateWrap.querySelector('span, i, [class*="Icon"]');
-            var iconWrap = document.createElement((iconTemplateWrap && iconTemplateWrap.tagName) ? iconTemplateWrap.tagName.toLowerCase() : 'div');
-            iconWrap.className = iconTemplateWrap && iconTemplateWrap.className ? iconTemplateWrap.className : '';
+            var iconWrap = document.createElement('span');
             iconWrap.classList.add('mtm-nav-iconwrap');
-            var iconSpan = document.createElement((iconTemplate && iconTemplate.tagName) ? iconTemplate.tagName.toLowerCase() : 'span');
-            iconSpan.className = iconTemplate && iconTemplate.className ? iconTemplate.className : '';
+            var iconSpan = document.createElement('span');
+            iconSpan.className = '';
             iconSpan.classList.add('mtm-eye-icon');
             function setIcon(on){
                 iconSpan.innerHTML = on
