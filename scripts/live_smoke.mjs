@@ -272,7 +272,7 @@ async function main() {
 
   const page = await context.newPage();
 
-  const routes = ['/dashboard', '/accounts', '/transactions', '/goals/savings', '/plan', '/investments/holdings/market'];
+  const routes = ['/dashboard', '/accounts', '/transactions', '/goals/savings', '/budget', '/investments/holdings/market'];
   for (const route of routes) {
     try {
       await runRoute(page, route);
@@ -299,6 +299,5 @@ main().catch((err) => {
   console.error('[live-smoke] FAILED:', err);
   process.exit(1);
 });
-
 
 

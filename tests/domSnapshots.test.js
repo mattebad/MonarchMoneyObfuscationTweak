@@ -15,6 +15,10 @@ const userscriptText = readFileSync(USERSCRIPT_PATH, 'utf8');
 
 function makeDom({ routePath, snapshotFile }) {
   const html = readFileSync(path.join(ROUTE_DOMS_DIR, snapshotFile), 'utf8');
+  return makeDomFromHtml({ routePath, html });
+}
+
+function makeDomFromHtml({ routePath, html }) {
   const dom = new JSDOM(html, {
     url: `https://app.monarch.com${routePath}`,
     runScripts: 'dangerously',
@@ -111,6 +115,35 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     expect(api.isActive()).toBe(true);
   });
 
+  it('route gating: the current budget route is active', () => {
+    const { api } = makeDom({ routePath: '/budget', snapshotFile: 'dashboard.html' });
+    expect(api.isActive()).toBe(true);
+  });
+
+  it('budget route: scans compact values that are not FullStory-marked', async () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/budget',
+      html: '<html><body><main><div class="budget-value"><span>$</span><span>1,234.56</span></div></main></body></html>',
+    });
+
+    api.scanAndWrap();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(document.querySelectorAll('.mtm-amount').length).toBeGreaterThan(0);
+    expect(document.querySelector('.mtm-amount')?.textContent).toMatch(/\*/);
+  });
+
+  it('route gating: auxiliary masks do not leak onto unsupported routes', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/reports',
+      html: '<html><body><svg><text>$9K</text></svg><input value="$123.45"></body></html>',
+    });
+
+    api.applyState();
+    expect(document.body.classList.contains('mt-obfuscate-on')).toBe(false);
+    expect(document.querySelector('text')?.textContent).toBe('$9K');
+    expect(document.querySelector('input')?.value).toBe('$123.45');
+  });
+
   it('sidebar injection: can insert toggle into dashboard sidebar in test mode', () => {
     const { document, api } = makeDom({ routePath: '/dashboard', snapshotFile: 'dashboard.html' });
     expect(document.getElementById('mtm-obf-master')).toBeNull();
@@ -121,7 +154,22 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     expect(toggle.querySelector('.mtm-nav-title')?.textContent).toBe('Obfuscate Balances');
     expect(toggle.parentElement?.lastElementChild?.id).toBe('mtm-obf-master');
   });
+
+  it('sidebar injection: stays in a new icon-only navigation rail', () => {
+    const primaryRoutes = ['dashboard', 'accounts', 'transactions', 'cash-flow', 'reports', 'budget', 'recurring', 'goals'];
+    const iconLinks = primaryRoutes.map((route) => `<a href="/${route}" aria-label="${route}"><svg></svg></a>`).join('');
+    const contentLinks = primaryRoutes.slice(0, 4).map((route) => `<a href="/${route}">${route}</a>`).join('');
+    const { document, api } = makeDomFromHtml({
+      routePath: '/dashboard',
+      html: `<html><body><div id="app"><div id="icon-rail">${iconLinks}</div><main><header id="dashboard-header">${contentLinks}</header><div>$1,234.56</div></main></div></body></html>`,
+    });
+
+    api.ensureSideNav();
+    const toggle = document.getElementById('mtm-obf-master');
+    expect(toggle).toBeTruthy();
+    expect(toggle?.parentElement?.id).toBe('icon-rail');
+    expect(toggle?.classList.contains('mtm-nav-collapsed')).toBe(true);
+    expect(toggle?.getAttribute('aria-pressed')).toBe('true');
+    expect(toggle?.getAttribute('aria-label')).toBe('Show balances');
+  });
 });
-
-
-

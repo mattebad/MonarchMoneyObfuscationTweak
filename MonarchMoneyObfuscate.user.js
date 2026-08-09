@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Monarch Money - Obfuscate Balances
 // @namespace    https://tampermonkey.net/
-// @version      1.3.1
-// @description  Obfuscate dollar amounts on Monarch Money Dashboard/Accounts/Transactions/Goals/Plan/Investments with performant observers
+// @version      1.3.2
+// @description  Obfuscate dollar amounts on Monarch Money Dashboard/Accounts/Transactions/Goals/Budget/Investments with performant observers
 // @match        https://app.monarch.com/*
 // @downloadURL  https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js
 // @updateURL    https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js
@@ -21,12 +21,6 @@
         if(value !== null) return value;
         if(isNum == true) {return 0;} else {return '';}
     }
-    function flipCookie(inCookie,spin) {
-        let OldValue = parseInt(getCookie(inCookie,true)) + 1;
-        if(spin == null) {spin = 1;}
-        if(OldValue > spin) { setCookie(inCookie,0); } else {setCookie(inCookie,OldValue); }
-    }
-
     // Debug (opt-in): set localStorage MTM_OBF_DEBUG=1 to enable console.debug + counters.
     function MTM_isDebugEnabled(){ try { return getCookie('MTM_OBF_DEBUG', true) == 1; } catch(e) { void e; return false; } }
     function MTM_dbg(){
@@ -35,7 +29,7 @@
     }
     window.MTM_OBF_STATS = window.MTM_OBF_STATS || { scanRuns:0, candidatesSeen:0, watched:0, enqueued:0, queueRuns:0, wrapAttempts:0, wrapSuccess:0, observerStarts:0, observerStops:0 };
 
-    // [ MT: Obfuscate Dollar Amounts — scoped to /dashboard, /accounts, /transactions, /objectives|/goals, /plan, /investments ]
+    // [ MT: Obfuscate Dollar Amounts — scoped to dashboard, accounts, transactions, goals, budget/plan, and investments ]
     // Injects minimal CSS used by the masking spans and the sidebar toggle; idempotent.
     (function MTM_Obfuscation_InitCSS(){
         if (document.getElementById('mtm-obf-css')) return;
@@ -59,7 +53,7 @@
 
     // Central configuration: allowed routes, scan containers, and elements to skip.
     const MTM_OBF_CFG = {
-        routeAllow: [/^\/dashboard(?:\/|$)/, /^\/accounts(?:\/|$)/, /^\/transactions(?:\/|$)/, /^\/objectives(?:\/|$)/, /^\/goals(?:\/|$)/, /^\/plan(?:\/|$)/, /^\/investments(?:\/|$)/],
+        routeAllow: [/^\/dashboard(?:\/|$)/, /^\/accounts(?:\/|$)/, /^\/transactions(?:\/|$)/, /^\/objectives(?:\/|$)/, /^\/goals(?:\/|$)/, /^\/(?:plan|budget)(?:\/|$)/, /^\/investments(?:\/|$)/],
         containerAllow: [
             'main',
             '[data-rbd-droppable-id="accountGroups"]',
@@ -268,7 +262,7 @@
 
     // Applies current masking state to all existing .mtm-amount nodes (toggle on/off).
     function MTM_applyState(){
-        const on = MTM_isObfEnabled();
+        const on = MTM_isActive();
         document.body.classList.toggle('mt-obfuscate-on', on);
         document.querySelectorAll('.mtm-amount').forEach(function(span){
             const orig = span.dataset.originalText || span.textContent;
@@ -280,7 +274,7 @@
     }
     // Masks remaining SVG currency labels not covered by wrapper logic.
     function MTM_maskChartDollarLabels(){
-        var on = MTM_isObfEnabled();
+        var on = MTM_isActive();
         var nodes = document.querySelectorAll('svg text, svg tspan');
         for (var i=0; i<nodes.length; i++){
             var n = nodes[i];
@@ -303,7 +297,7 @@
     }
     // Masks read-only/live-rendered money values exposed through form controls.
     function MTM_maskInputDollarValues(){
-        var on = MTM_isObfEnabled();
+        var on = MTM_isActive();
         var fields = document.querySelectorAll('input, textarea');
         for (var i=0; i<fields.length; i++){
             var field = fields[i];
@@ -533,10 +527,10 @@
                 var dashLeaves = MTM_collectDollarLeafCandidates(scope, 450);
                 for (var dl=0; dl<dashLeaves.length; dl++) { MTM_watch(dashLeaves[dl]); }
             }
-            if(/^\/(?:goals|objectives|plan)(?:\/|$)/.test(path)){
+            if(/^\/(?:goals|objectives|plan|budget)(?:\/|$)/.test(path)){
                 var moneyLeaves = MTM_collectDollarLeafCandidates(scope, 450);
                 for (var gi=0; gi<moneyLeaves.length; gi++) { MTM_watch(moneyLeaves[gi]); }
-                if(/^\/plan(?:\/|$)/.test(path)){
+                if(/^\/(?:plan|budget)(?:\/|$)/.test(path)){
                     // Plan table often splits "$" and number into sibling nodes; include compact containers directly.
                     var planExtra = Array.from(scope.querySelectorAll('div, span, p, td, th')).filter(function(el){
                         if(!MTM_shouldProcess(el)) return false;
@@ -601,7 +595,7 @@
                                         for(var dli=0; dli<dLeaves.length; dli++){ if(MTM_shouldProcess(dLeaves[dli])) { if(window.MTM_IO) { MTM_watch(dLeaves[dli]); } else { MTM_enqueue(dLeaves[dli]); } } }
                                     }
                                 }
-                                if(/^\/(?:goals|objectives|plan)(?:\/|$)/.test(path)){
+                                if(/^\/(?:goals|objectives|plan|budget)(?:\/|$)/.test(path)){
                                     if(node.matches && MTM_shouldProcess(node)){
                                         var nt = node.textContent || '';
                                         if(MTM_hasMaskableText(nt)) { if(window.MTM_IO) { MTM_watch(node); } else { MTM_enqueue(node); } }
@@ -609,7 +603,7 @@
                                     if(node.querySelectorAll){
                                         var leaves = MTM_collectDollarLeafCandidates(node, 150);
                                         for(var li=0; li<leaves.length; li++){ if(MTM_shouldProcess(leaves[li])) { if(window.MTM_IO) { MTM_watch(leaves[li]); } else { MTM_enqueue(leaves[li]); } } }
-                                        if(/^\/plan(?:\/|$)/.test(path)){
+                                        if(/^\/(?:plan|budget)(?:\/|$)/.test(path)){
                                             var pextra = node.querySelectorAll('div, span, p, td, th');
                                             for(var px=0; px<pextra.length && px<180; px++){
                                                 var pe = pextra[px];
@@ -637,7 +631,7 @@
                                     var dashHost = p.matches(MTM_DASH_SEL) ? p : p.closest(MTM_DASH_SEL);
                                     if(dashHost && MTM_shouldProcess(dashHost)) { if(window.MTM_IO) { MTM_watch(dashHost); } else { MTM_enqueue(dashHost); } }
                                 }
-                                if(!host && /^\/(?:goals|objectives|plan)(?:\/|$)/.test(path)){
+                                if(!host && /^\/(?:goals|objectives|plan|budget)(?:\/|$)/.test(path)){
                                     var moneyHost = p;
                                     if(moneyHost && MTM_shouldProcess(moneyHost)) { if(window.MTM_IO) { MTM_watch(moneyHost); } else { MTM_enqueue(moneyHost); } }
                                 }
@@ -774,33 +768,48 @@
             for (var i=0; i<all.length; i++){
                 var a = all[i];
                 if(!MTM_isPrimaryNavHref(a.getAttribute('href'))) continue;
-                var txt = (a.textContent || '').replace(/\s+/g,' ').trim();
-                if(!txt) continue; // exclude logo/dashboard icon links in sticky header
                 out.push(a);
             }
             return out;
         }
-        // Finds smallest ancestor that still contains most visible primary nav links.
+        function MTM_countDistinctPrimaryRoutes(links, root){
+            var seen = Object.create(null);
+            for(var i=0; i<links.length; i++){
+                if(root && !root.contains(links[i])) continue;
+                var path = MTM_parsePath(links[i].getAttribute('href'));
+                if(path) seen[path.split('/').slice(0, 2).join('/')] = true;
+            }
+            return Object.keys(seen).length;
+        }
+        // Finds the tightest ancestor containing a real primary-nav group. Counting distinct
+        // routes prevents duplicate dashboard widget links from pulling the toggle into <main>.
         function MTM_findPrimaryNavList(sidebarRoot, sideContent){
             var searchRoot = sideContent || sidebarRoot || document;
             var links = MTM_collectPrimaryNavLinks(searchRoot);
             if(!links.length) return null;
             var best = null;
-            var bestCount = 0;
+            var bestRoutes = 0;
+            var bestDensity = 0;
             var bestDesc = Number.POSITIVE_INFINITY;
+            var bestDepth = -1;
             for (var li=0; li<links.length; li++){
                 var p = links[li].parentElement;
                 var hops = 0;
                 while(p && p !== searchRoot && hops < 9){
-                    var count = 0;
-                    for (var j=0; j<links.length; j++){ if(p.contains(links[j])) count++; }
-                    if(count >= 4){
+                    var routeCount = MTM_countDistinctPrimaryRoutes(links, p);
+                    if(routeCount >= 4){
                         var desc = 0;
                         try { desc = p.querySelectorAll('a[href]').length; } catch(e2) { void e2; }
-                        if(!best || count > bestCount || (count === bestCount && desc < bestDesc)){
+                        var density = routeCount / Math.max(desc, 1);
+                        if(!best || density > bestDensity ||
+                            (density === bestDensity && routeCount > bestRoutes) ||
+                            (density === bestDensity && routeCount === bestRoutes && desc < bestDesc) ||
+                            (density === bestDensity && routeCount === bestRoutes && desc === bestDesc && hops < bestDepth)){
                             best = p;
-                            bestCount = count;
+                            bestRoutes = routeCount;
+                            bestDensity = density;
                             bestDesc = desc;
+                            bestDepth = hops;
                         }
                     }
                     p = p.parentElement;
@@ -869,6 +878,9 @@
                 iconSpan.innerHTML = on
                     ? '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="2"/><path d="M22 2 2 22" stroke="currentColor" stroke-width="2"/></svg>'
                     : '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>';
+                link.setAttribute('aria-pressed', on ? 'true' : 'false');
+                link.setAttribute('aria-label', on ? 'Show balances' : 'Obfuscate balances');
+                link.title = on ? 'Show balances' : 'Obfuscate balances';
             }
             setIcon(MTM_isObfEnabled());
             iconWrap.appendChild(iconSpan);
@@ -881,7 +893,7 @@
             link.appendChild(title);
             link.addEventListener('click', function(e){
                 e.preventDefault();
-                flipCookie('MT_HideSensitiveInfo');
+                setCookie('MT_HideSensitiveInfo', MTM_isObfEnabled() ? 0 : 1);
                 MTM_applyState();
                 MTM_scanAndWrap();
                 if(MTM_isObfEnabled()) window.MTM_restartObserver(); else window.MTM_stopObserver();
@@ -903,9 +915,10 @@
             window.MTM_SIDENAV_ORDER_OBS = orderObs;
 
             // Toggle collapsed style by observing only the sidebar root for class changes
-            sidebarRoot = sidebarRoot || firstLink.closest('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"]') || document.querySelector('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"]');
+            sidebarRoot = sidebarRoot || firstLink.closest('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"]') || document.querySelector('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"]') || navList;
             var setCollapsed = function(){
-                var collapsed = !!(sidebarRoot && sidebarRoot.classList.contains('sidebar-collapsed'));
+                var sourceText = (firstLink.textContent || '').replace(/\s+/g, '').trim();
+                var collapsed = !sourceText || !!(sidebarRoot && sidebarRoot.classList.contains('sidebar-collapsed'));
                 if(!collapsed && sidebarRoot){
                     var ariaExpanded = sidebarRoot.getAttribute('aria-expanded');
                     if(ariaExpanded === 'false') collapsed = true;
@@ -974,5 +987,3 @@
         };
     }
 })();
-
-

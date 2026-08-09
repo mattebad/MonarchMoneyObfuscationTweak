@@ -13,7 +13,7 @@ const ROUTES = [
   { key: 'accounts', path: '/accounts', navHref: '/accounts' },
   { key: 'transactions', path: '/transactions', navHref: '/transactions' },
   { key: 'goals_savings', path: '/goals/savings', navHref: '/goals' },
-  { key: 'plan', path: '/plan', navHref: '/plan' },
+  { key: 'budget', path: '/budget', navHref: '/budget' },
   { key: 'investments_holdings', path: '/investments/holdings/market', navHref: '/investments' },
 ];
 
@@ -419,4 +419,3 @@ main().catch((err) => {
   console.error('[live-visual-capture] FAILED:', err);
   process.exit(1);
 });
-
