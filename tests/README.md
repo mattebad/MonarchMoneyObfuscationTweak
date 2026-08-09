@@ -6,7 +6,7 @@ The root `README.md` is intended for end-user installation/usage. This document 
 These tests load the committed HTML snapshots under `../Route DOMs/` using JSDOM, execute the userscript in a deterministic **test mode**, and assert:
 - At least one value is wrapped/masked per route snapshot
 - Masking can be toggled back to original
-- SVG/chart text is not modified
+- SVG/chart amounts are masked without inserting HTML wrappers into SVG
 - Sidebar toggle injection still works on the captured sidebar DOM
 
 ### Run locally
@@ -148,5 +148,4 @@ npm run live:visual:capture
 - Scroll updates still mask/unmask newly visible rows/cards.
 - Hard reload and sidebar nav transitions keep behavior consistent.
 - Sidebar toggle stays visible and positioned correctly at each viewport.
-
 

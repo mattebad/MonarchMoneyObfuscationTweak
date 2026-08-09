@@ -140,7 +140,7 @@ async function main() {
     { route: '/dashboard', file: 'dashboard.html' },
     { route: '/accounts', file: 'accounts.html' },
     { route: '/transactions', file: 'transactions.html' },
-    { route: '/objectives', file: 'objectives.html' },
+    { route: '/goals/savings', file: 'objectives.html' },
     { route: '/investments', file: 'investments.html' },
   ];
 
@@ -195,5 +195,4 @@ main().catch((err) => {
   console.error('[snapshot] FAILED:', err);
   process.exit(1);
 });
-
 
