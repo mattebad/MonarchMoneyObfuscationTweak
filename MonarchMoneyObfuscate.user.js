@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Monarch Money - Obfuscate Balances
 // @namespace    https://tampermonkey.net/
-// @version      1.3.11
+// @version      1.3.14
 // @description  Obfuscate dollar amounts on Monarch Money Dashboard/Accounts/Transactions/Goals/Budget/Investments with performant observers
 // @match        https://app.monarch.com/*
 // @downloadURL  https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js
@@ -77,7 +77,7 @@
     // [ MT: Obfuscate Dollar Amounts — scoped to dashboard, accounts, transactions, goals, budget/plan, and investments ]
     // Injects minimal CSS used by the masking spans and the sidebar toggle; idempotent.
     (function MTM_Obfuscation_InitCSS(){
-        const css = '\n.mtm-amount-wrap{position:relative;display:inline-block;margin-right:.25em}\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .fs-mask .recharts-yAxis .recharts-text tspan{opacity:0}\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis .recharts-cartesian-axis-tick-value,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis .recharts-text,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis tspan{opacity:0!important}\nbody.mt-obfuscate-on input.fs-exclude,\nbody.mt-obfuscate-on input[class*="CurrencyInput__Input-"]{-webkit-text-security:disc;text-security:disc}\n.mtm-nav-eye-btn{display:flex;align-items:center;gap:12px;cursor:pointer;color:inherit;background:transparent;border:0;width:100%;padding:8px 10px;border-radius:8px;text-align:left}\n.mtm-nav-eye-btn:hover{background:rgba(255,255,255,.06)}\n.mtm-nav-eye-btn .mtm-iconwrap{display:flex;align-items:center;justify-content:center;width:40px;height:40px}\n.mtm-nav-eye-btn .mtm-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px}\n.mtm-nav-eye-btn .mtm-icon svg{width:20px;height:20px;display:block}\n.mtm-nav-eye-btn .mtm-label{font-size:12px;white-space:nowrap}\n.mtm-nav-collapsed .mtm-label{display:none}\n#mtm-obf-master{display:flex;align-items:center;gap:12px;transition:none!important}\n#mtm-obf-master .mtm-nav-title{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}\n#mtm-obf-master .mtm-nav-iconwrap{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:20px;transition:none!important}\n#mtm-obf-master .mtm-eye-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;line-height:1}\n#mtm-obf-master .mtm-eye-icon::before,\n#mtm-obf-master .mtm-eye-icon::after{content:none!important}\n#mtm-obf-master .mtm-eye-icon svg{width:20px;height:20px;display:block}\n.sidebar-collapsed #mtm-obf-master,\n.mtm-nav-collapsed#mtm-obf-master,\n.mtm-nav-collapsed #mtm-obf-master{height:40px!important;padding-top:0!important;padding-bottom:0!important;transition:none!important}\n.sidebar-collapsed #mtm-obf-master .mtm-nav-title,\n.mtm-nav-collapsed #mtm-obf-master .mtm-nav-title{display:none!important}\n';
+        const css = '\n.mtm-amount-wrap{position:relative;display:inline-block;margin-right:.25em}\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .fs-mask .recharts-yAxis .recharts-text tspan{opacity:0}\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis .recharts-cartesian-axis-tick-value,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis .recharts-text,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis tspan{opacity:0!important}\nbody.mt-obfuscate-on input.fs-exclude,\nbody.mt-obfuscate-on input[class*="CurrencyInput__Input-"]{-webkit-text-security:disc;text-security:disc}\n.mtm-nav-eye-btn{display:flex;align-items:center;gap:12px;cursor:pointer;color:inherit;background:transparent;border:0;width:100%;padding:8px 10px;border-radius:8px;text-align:left}\n.mtm-nav-eye-btn:hover{background:rgba(255,255,255,.06)}\n.mtm-nav-eye-btn .mtm-iconwrap{display:flex;align-items:center;justify-content:center;width:40px;height:40px}\n.mtm-nav-eye-btn .mtm-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px}\n.mtm-nav-eye-btn .mtm-icon svg{width:20px;height:20px;display:block}\n.mtm-nav-eye-btn .mtm-label{font-size:12px;white-space:nowrap}\n.mtm-nav-collapsed .mtm-label{display:none}\n#mtm-obf-master{display:flex;align-items:center;gap:0;box-sizing:border-box;min-width:0;max-width:100%;height:36px;margin:0 0 2px;padding:8px 12px;overflow:hidden;transition:none!important}\n#mtm-obf-master .mtm-nav-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}\n#mtm-obf-master:not(.mtm-nav-collapsed) .mtm-nav-title{display:inline-block}\n#mtm-obf-master .mtm-nav-iconwrap{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:16px;height:16px;min-width:16px;margin:0 12px 0 0;transition:none!important}\n#mtm-obf-master .mtm-eye-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;line-height:1}\n#mtm-obf-master .mtm-eye-icon::before,\n#mtm-obf-master .mtm-eye-icon::after{content:none!important}\n#mtm-obf-master .mtm-eye-icon svg{width:16px;height:16px;display:block}\n.sidebar-collapsed #mtm-obf-master,\n#mtm-obf-master.mtm-nav-collapsed{width:40px!important;min-width:40px!important;max-width:40px!important;height:36px!important;padding:8px 12px!important;gap:0!important;margin:0 0 2px!important;overflow:hidden!important;justify-content:flex-start!important;transition:none!important}\n.sidebar-collapsed #mtm-obf-master .mtm-nav-iconwrap,\n#mtm-obf-master.mtm-nav-collapsed .mtm-nav-iconwrap{margin:0!important}\n.sidebar-collapsed #mtm-obf-master .mtm-nav-title,\n#mtm-obf-master.mtm-nav-collapsed .mtm-nav-title{display:none!important}\n';
         const auxCss = '\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-wrapper.fs-mask .recharts-cartesian-axis-tick-labels.recharts-yAxis-tick-labels .recharts-layer.recharts-cartesian-axis-tick-label,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-wrapper.fs-mask .recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) svg .recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-label{opacity:0!important}\nbody.mt-obfuscate-on number-flow-react.mtm-mask-number-flow{position:relative}\nbody.mt-obfuscate-on number-flow-react.mtm-mask-number-flow::part(left),\nbody.mt-obfuscate-on number-flow-react.mtm-mask-number-flow::part(number),\nbody.mt-obfuscate-on number-flow-react.mtm-mask-number-flow::part(right){opacity:0!important}\nbody.mt-obfuscate-on number-flow-react.mtm-mask-number-flow::after{content:"$*,***.**";position:absolute;inset:0;display:inline-flex;align-items:center;justify-content:center;pointer-events:none;white-space:nowrap;color:inherit;z-index:1}\n';
         function inject(){
             try {
@@ -1259,9 +1259,53 @@
             return MTM_findPrimaryNavListInRoot(sideContent || sidebarRoot || document);
         }
 
+        function MTM_findSidebarFlyout(navList){
+            var el = navList;
+            for(var i=0; i<10 && el; i++){
+                var cls = '';
+                try { cls = String(el.className || ''); } catch(e) { void e; }
+                // The overlay uses w-(--sidebar-width) and grows 52→240. Do not use
+                // min-w-(--sidebar-expanded-width); that inner column stays ~224px even when clipped.
+                if(/(?:^|\s)w-\(--sidebar-width\)/.test(cls) || cls.indexOf(' flex w-(--sidebar-width)') !== -1 || cls.indexOf('w-(--sidebar-width)') !== -1){
+                    if(cls.indexOf('min-w-(--sidebar-expanded-width)') === -1) return el;
+                }
+                el = el.parentElement;
+            }
+            return null;
+        }
+        function MTM_isNavCollapsed(navList, sidebarRoot, firstLink){
+            var rail = sidebarRoot;
+            var aria = rail && rail.getAttribute && rail.getAttribute('aria-expanded');
+            if(aria === 'true') return false;
+            var flyout = MTM_findSidebarFlyout(navList);
+            var width = 0;
+            try { width = (flyout || rail || navList).getBoundingClientRect().width; } catch(e) { void e; }
+            if(width >= 160) return false;
+            if(aria === 'false') return true;
+            if(width > 0 && width < 120) return true;
+            if(rail && rail.classList && rail.classList.contains('sidebar-collapsed')) return true;
+            var sourceText = ((firstLink && firstLink.textContent) || '').replace(/\s+/g, '').trim();
+            return !sourceText;
+        }
+        function MTM_syncSideNavChrome(link, firstLink){
+            if(!link) return;
+            var title = link.querySelector('.mtm-nav-title');
+            if(title){
+                var nativeLabel = firstLink && firstLink.querySelector('.hidden.truncate, [class*="in-aria-expanded"]');
+                title.className = nativeLabel && nativeLabel.className
+                    ? ('mtm-nav-title ' + String(nativeLabel.className))
+                    : 'mtm-nav-title hidden truncate in-aria-expanded:inline-block';
+            }
+            var iconWrap = link.querySelector('.mtm-nav-iconwrap');
+            var nativeIcon = firstLink && firstLink.querySelector('[class*="LinkIcon"]');
+            if(iconWrap && nativeIcon && nativeIcon.className){
+                iconWrap.className = String(nativeIcon.className) + ' mtm-nav-iconwrap';
+            }
+        }
         function MTM_bindSideNavGuards(navList, link, sidebarRoot, firstLink){
             try { if(window.MTM_SIDENAV_ORDER_OBS) window.MTM_SIDENAV_ORDER_OBS.disconnect(); } catch{ /* ignore */ }
             try { if(window.MTM_SIDENAV_COLLAPSE_OBS) window.MTM_SIDENAV_COLLAPSE_OBS.disconnect(); } catch{ /* ignore */ }
+            try { if(window.MTM_SIDENAV_RESIZE_OBS) window.MTM_SIDENAV_RESIZE_OBS.disconnect(); } catch{ /* ignore */ }
 
             var orderObs = new MutationObserver(function(){
                 var last = navList.lastElementChild;
@@ -1270,30 +1314,39 @@
             orderObs.observe(navList, { childList: true });
             window.MTM_SIDENAV_ORDER_OBS = orderObs;
 
-            sidebarRoot = sidebarRoot || (firstLink && firstLink.closest && firstLink.closest('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"]')) || document.querySelector('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"]') || navList;
+            sidebarRoot = sidebarRoot || (firstLink && firstLink.closest && firstLink.closest('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"], [class*="sidebar-collapsed-width"]')) || document.querySelector('.SideBar__Root-sc-161w9oi-0, [class*="SideBar__Root-"], [class*="SideBar__Root"], [class*="sidebar-collapsed-width"]') || navList;
+            var flyout = MTM_findSidebarFlyout(navList);
             var setCollapsed = function(){
-                var sourceText = ((firstLink && firstLink.textContent) || '').replace(/\s+/g, '').trim();
-                var collapsed = !sourceText || !!(sidebarRoot && sidebarRoot.classList && sidebarRoot.classList.contains('sidebar-collapsed'));
-                if(!collapsed && sidebarRoot){
-                    var ariaExpanded = sidebarRoot.getAttribute && sidebarRoot.getAttribute('aria-expanded');
-                    if(ariaExpanded === 'false') collapsed = true;
-                    var width = 0;
-                    try { width = sidebarRoot.getBoundingClientRect().width; } catch(e) { void e; }
-                    if(!collapsed && width > 0 && width < 120) collapsed = true;
-                }
-                link.classList.toggle('mtm-nav-collapsed', collapsed);
+                link.classList.toggle('mtm-nav-collapsed', MTM_isNavCollapsed(navList, sidebarRoot, firstLink));
             };
             setCollapsed();
-            if(sidebarRoot && sidebarRoot.nodeType === 1){
+            var observed = [];
+            function observeNode(node){
+                if(!node || node.nodeType !== 1 || observed.indexOf(node) !== -1) return;
+                observed.push(node);
+            }
+            observeNode(sidebarRoot);
+            observeNode(flyout);
+            observeNode(navList);
+            if(observed.length){
                 var collapseObs = new MutationObserver(function(){ setCollapsed(); });
-                collapseObs.observe(sidebarRoot, { attributes: true, attributeFilter: ['class', 'style', 'aria-expanded'] });
+                for(var oi=0; oi<observed.length; oi++){
+                    try { collapseObs.observe(observed[oi], { attributes: true, attributeFilter: ['class', 'style', 'aria-expanded', 'data-pinned'] }); } catch(e) { void e; }
+                }
                 window.MTM_SIDENAV_COLLAPSE_OBS = collapseObs;
+                if(typeof ResizeObserver !== 'undefined'){
+                    var resizeObs = new ResizeObserver(function(){ setCollapsed(); });
+                    for(var ri=0; ri<observed.length; ri++){
+                        try { resizeObs.observe(observed[ri]); } catch(e2) { void e2; }
+                    }
+                    window.MTM_SIDENAV_RESIZE_OBS = resizeObs;
+                }
             }
         }
 
         function ensure(){
             // Insert as a native nav item at the end of the primary list
-            var sidebarRoot = document.querySelector('[class*="SideBar__Root-"], [class*="SideBar__Root"], .SideBar__Root-sc-161w9oi-0');
+            var sidebarRoot = document.querySelector('[class*="SideBar__Root-"], [class*="SideBar__Root"], .SideBar__Root-sc-161w9oi-0, [class*="sidebar-collapsed-width"]');
             var sideContent = sidebarRoot && (sidebarRoot.querySelector('[class*="SideBar__Content-"], [class*="SideBar__Content"], .SideBar__Content-sc-161w9oi-4') || null);
             var navList = MTM_findPrimaryNavList(sidebarRoot, sideContent);
             var firstLink = null;
@@ -1327,6 +1380,7 @@
                 if(existing.parentElement !== navList || navList.lastElementChild !== existing){
                     navList.appendChild(existing);
                 }
+                MTM_syncSideNavChrome(existing, firstLink);
                 MTM_bindSideNavGuards(navList, existing, sidebarRoot, firstLink);
                 return;
             }
@@ -1341,7 +1395,7 @@
             try {
                 link.className = link.className.split(/\s+/).filter(function(cls){
                     if(!cls) return false;
-                    if(cls === 'nav-item-active') return false;
+                    if(cls === 'nav-item-active' || cls === 'active') return false;
                     if(cls.indexOf('in-aria-') !== -1) return false;
                     return true;
                 }).join(' ');
@@ -1352,6 +1406,10 @@
 
             var iconWrap = document.createElement('span');
             iconWrap.classList.add('mtm-nav-iconwrap');
+            var nativeIcon = firstLink && firstLink.querySelector('[class*="LinkIcon"]');
+            if(nativeIcon && nativeIcon.className){
+                iconWrap.className = String(nativeIcon.className) + ' mtm-nav-iconwrap';
+            }
             var iconSpan = document.createElement('span');
             iconSpan.className = '';
             iconSpan.classList.add('mtm-eye-icon');
@@ -1367,7 +1425,7 @@
             iconWrap.appendChild(iconSpan);
 
             var title = document.createElement('span');
-            title.className = 'mtm-nav-title';
+            title.className = 'mtm-nav-title hidden truncate in-aria-expanded:inline-block';
             title.textContent = 'Obfuscate Balances';
 
             link.appendChild(iconWrap);

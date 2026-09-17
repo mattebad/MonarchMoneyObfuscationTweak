@@ -278,6 +278,37 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     expect(toggle?.closest('main')).toBeNull();
   });
 
+  it('sidebar injection: collapses labeled icon-rail items to native 40x36', () => {
+    const primaryRoutes = ['dashboard', 'accounts', 'transactions', 'cash-flow', 'reports', 'budget', 'recurring', 'goals'];
+    const iconLinks = primaryRoutes.map((route) => `<a href="/${route}" aria-label="${route}">${route}<svg></svg></a>`).join('');
+    const { document, api } = makeDomFromHtml({
+      routePath: '/dashboard',
+      html: `<html><body><div class="relative w-(--sidebar-collapsed-width) shrink-0" aria-expanded="false"><div class="absolute inset-y-0 left-0 z-10 flex w-(--sidebar-width)"><div id="icon-rail">${iconLinks}</div></div></div><main><div>$1,234.56</div></main></body></html>`,
+    });
+
+    api.ensureSideNav();
+    const toggle = document.getElementById('mtm-obf-master');
+    expect(toggle).toBeTruthy();
+    expect(toggle?.classList.contains('mtm-nav-collapsed')).toBe(true);
+    expect(toggle?.parentElement?.id).toBe('icon-rail');
+    expect(toggle?.querySelector('.mtm-nav-title')).toBeTruthy();
+  });
+
+  it('sidebar injection: shows the obfuscate label when the flyout is expanded', () => {
+    const primaryRoutes = ['dashboard', 'accounts', 'transactions', 'cash-flow', 'reports', 'budget', 'recurring', 'goals'];
+    const iconLinks = primaryRoutes.map((route) => `<a href="/${route}" aria-label="${route}">${route}<svg></svg></a>`).join('');
+    const { document, api } = makeDomFromHtml({
+      routePath: '/dashboard',
+      html: `<html><body><div class="relative w-(--sidebar-collapsed-width) shrink-0" aria-expanded="true"><div class="absolute inset-y-0 left-0 z-10 flex w-(--sidebar-width)"><div id="icon-rail">${iconLinks}</div></div></div><main><div>$1,234.56</div></main></body></html>`,
+    });
+
+    api.ensureSideNav();
+    const toggle = document.getElementById('mtm-obf-master');
+    expect(toggle).toBeTruthy();
+    expect(toggle?.classList.contains('mtm-nav-collapsed')).toBe(false);
+    expect(toggle?.querySelector('.mtm-nav-title')?.textContent).toBe('Obfuscate Balances');
+  });
+
   it('dashboard Budget row: wraps planned and earned amounts with no raw $ leaks', async () => {
     const { document, api } = makeDomFromHtml({
       routePath: '/dashboard',
