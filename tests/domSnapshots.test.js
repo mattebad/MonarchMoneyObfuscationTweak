@@ -158,6 +158,136 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     expect(api.isActive()).toBe(true);
   });
 
+  it('page preferences default all supported pages to enabled', () => {
+    const { window, api } = makeDom({ routePath: '/dashboard', snapshotFile: 'dashboard.html' });
+    expect(window.localStorage.getItem('MTM_OBF_PAGES')).toBeNull();
+    expect(api.readPagePrefs()).toEqual({
+      dashboard: true,
+      accounts: true,
+      transactions: true,
+      goals: true,
+      budget: true,
+      investments: true,
+    });
+    expect(api.isActive()).toBe(true);
+    expect(api.routeKey('/reports')).toBeNull();
+  });
+
+  it('page preferences disable a page family without disabling the master toggle', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/dashboard',
+      html: '<html><body><main><span class="fs-exclude">$1,234.56</span></main></body></html>',
+    });
+
+    expect(api.setPagePref('dashboard', false)).toBe(false);
+    expect(api.isActive()).toBe(false);
+    api.scanAndWrap();
+    expect(document.querySelector('.mtm-amount')).toBeNull();
+    expect(JSON.parse(document.defaultView.localStorage.getItem('MTM_OBF_PAGES')).dashboard).toBe(false);
+  });
+
+  it('page preferences apply to budget and goals route aliases', () => {
+    const budgetDom = makeDomFromHtml({
+      routePath: '/plan',
+      html: '<html><body><main><div>$1,234.56</div></main></body></html>',
+    });
+    expect(budgetDom.api.routeKey('/budget')).toBe('budget');
+    expect(budgetDom.api.routeKey('/plan/monthly')).toBe('budget');
+    expect(budgetDom.api.setPagePref('budget', false)).toBe(false);
+    expect(budgetDom.api.isActive()).toBe(false);
+
+    const goalsDom = makeDomFromHtml({
+      routePath: '/goals/debt-paydown',
+      html: '<html><body><main><div>$1,234.56</div></main></body></html>',
+    });
+    expect(goalsDom.api.routeKey('/objectives')).toBe('goals');
+    expect(goalsDom.api.routeKey('/goals/debt-paydown')).toBe('goals');
+  });
+
+  it('obfuscation settings pane injects six checkboxes without masking settings amounts', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: `
+        <html><body>
+          <main>
+            <section class="Card__CardRoot-x"><h2>Personal information</h2></section>
+            <div class="profile-amount">$99.00</div>
+          </main>
+        </body></html>
+      `,
+    });
+
+    api.ensureSettings();
+    const card = document.querySelector('#mtm-obf-settings');
+    expect(card).toBeTruthy();
+    expect(card?.className).toContain('Card__CardRoot-x');
+    expect(card?.querySelectorAll('input[data-mtm-page]').length).toBe(6);
+    expect(Array.from(card?.querySelectorAll('input[data-mtm-page]') || []).every((input) => input.checked)).toBe(true);
+    expect(document.querySelector('.profile-amount')?.textContent).toBe('$99.00');
+    expect(document.querySelector('.mtm-amount')).toBeNull();
+  });
+
+  it('obfuscation settings writes a checkbox change and restores it on re-ensure', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: '<html><body><main><div class="Card__CardRoot-x">Profile</div></main></body></html>',
+    });
+
+    api.ensureSettings();
+    const accounts = document.querySelector('input[data-mtm-page="accounts"]');
+    expect(accounts).toBeTruthy();
+    accounts.checked = false;
+    accounts.dispatchEvent(new document.defaultView.Event('change', { bubbles: true }));
+
+    expect(JSON.parse(document.defaultView.localStorage.getItem('MTM_OBF_PAGES')).accounts).toBe(false);
+    accounts.checked = true;
+    api.ensureSettings();
+    expect(document.querySelector('input[data-mtm-page="accounts"]')?.checked).toBe(false);
+  });
+
+  it('obfuscation settings adds an Account submenu entry and own pane', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: `
+        <html><body>
+          <nav>
+            <div id="account-settings-nav">
+              <a href="/settings/profile" class="native-link active" data-selected="">Profile</a>
+              <a href="/settings/display" class="native-link">Display</a>
+            </div>
+          </nav>
+          <main><div class="Card__CardRoot-x">Profile</div></main>
+        </body></html>
+      `,
+    });
+
+    api.ensureSettings();
+    const navLink = document.querySelector('#mtm-obf-settings-nav');
+    expect(navLink).toBeTruthy();
+    expect(navLink?.getAttribute('href')).toBe('/settings/obfuscation');
+    expect(navLink?.textContent).toBe('Obfuscate Balances');
+    expect(document.querySelector('a[href="/settings/profile"]')?.nextElementSibling).toBe(navLink);
+    expect(navLink?.hasAttribute('data-selected')).toBe(true);
+    expect(document.querySelector('a[href="/settings/profile"]')?.hasAttribute('data-selected')).toBe(false);
+    expect(document.querySelector('#mtm-obf-settings-pane')).toBeTruthy();
+    expect(document.querySelector('#mtm-obf-settings-pane #mtm-obf-settings')).toBeTruthy();
+    expect(document.querySelector('main > .Card__CardRoot-x')?.style.display).toBe('none');
+  });
+
+  it('malformed page preferences fall back to all supported pages enabled', () => {
+    const { window, api } = makeDom({ routePath: '/dashboard', snapshotFile: 'dashboard.html' });
+    window.localStorage.setItem('MTM_OBF_PAGES', 'not-json');
+    expect(api.readPagePrefs()).toEqual({
+      dashboard: true,
+      accounts: true,
+      transactions: true,
+      goals: true,
+      budget: true,
+      investments: true,
+    });
+    expect(api.isActive()).toBe(true);
+  });
+
   it('dashboard without main: scans the content pane instead of recurring item rows', async () => {
     const { document, api } = makeDomFromHtml({
       routePath: '/dashboard',

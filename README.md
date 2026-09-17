@@ -6,6 +6,7 @@ Lightweight userscript that masks dollar amounts on Monarch Money to prevent sho
 - **Masks currency**: Replaces values like `$4,201.28`, `-$150.00`, and `($99.00)` with a normalized pattern such as `$*,***.**`.
 - **Hover to reveal**: When masking is on, hovering a masked value temporarily reveals the original amount.
 - **Sidebar toggle**: Inserts an “Obfuscate Balances” control in Monarch’s left sidebar to turn masking on/off. Your choice is saved locally.
+- **Page settings**: Adds an “Obfuscate Balances” entry under Settings → Account. It opens a dedicated pane at `/settings/obfuscation` where you can choose which supported pages use masking. These preferences are saved locally and default to enabled.
 - **Supported pages**: `/dashboard`, `/accounts`, `/transactions`, `/goals`, `/budget` (plus legacy `/plan`), `/investments`.
 - **Performance‑aware**: Scans only known containers; when masking is OFF it stays effectively idle.
 
@@ -13,7 +14,7 @@ Lightweight userscript that masks dollar amounts on Monarch Money to prevent sho
 1. Install Tampermonkey for your browser:
    - [Tampermonkey for Chrome](https://tampermonkey.net/?ext=dhdg&browser=chrome)
    - [Tampermonkey for Firefox](https://tampermonkey.net/?ext=dhdg&browser=firefox)
-2. 🚀 [Click here to install latest version - V1.3.2](https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js)
+2. [Click here to install the latest version - V1.3.16](https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js)
 3. Ensure the script is enabled while on an open Monarch Money tab.
 
 The script only runs on `https://app.monarch.com/*`.
@@ -21,10 +22,11 @@ The script only runs on `https://app.monarch.com/*`.
 ## Usage
 1. Visit [Monarch Money](https://app.monarch.com/).
 2. In the left sidebar, click “Obfuscate Balances” to toggle masking.
-3. With masking ON:
+3. Optional: open **Settings → Account → Obfuscate Balances** and use the dedicated pane to turn masking off for individual supported page groups. The sidebar control remains the global master switch.
+4. With masking ON:
    - Amounts are replaced by a masked pattern.
    - Hover over any masked value to temporarily reveal it.
-4. With masking OFF: the script idles and does not scan the page.
+5. With masking OFF: the script idles and does not scan the page.
 
 ## Notes and limitations
 - The script primarily targets elements that contain a dollar sign. Amounts without `$` may not be masked.
