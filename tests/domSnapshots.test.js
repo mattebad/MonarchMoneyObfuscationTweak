@@ -764,6 +764,57 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     expect(document.querySelector('.recharts-yAxis-tick-labels text')?.textContent).toBe('$297.5K');
   });
 
+  it('restores chart ticks when a page pref turns the current route off', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/dashboard',
+      html: `
+        <html><body>
+          <main>
+            <svg>
+              <g class="recharts-yAxis-tick-labels"><text>$285K</text><text>$2K</text></g>
+            </svg>
+          </main>
+        </body></html>
+      `,
+    });
+
+    api.scanAndWrap();
+    api.applyState();
+    expect(document.querySelector('.recharts-yAxis-tick-labels text')?.textContent).toBe('$*,***.**K');
+
+    expect(api.setPagePref('dashboard', false)).toBe(false);
+    expect(api.isActive()).toBe(false);
+    expect(document.querySelector('.recharts-yAxis-tick-labels text')?.textContent).toBe('$285K');
+    expect(document.querySelector('.recharts-yAxis-tick-labels text')?.dataset.mtmChartOriginalText).toBeUndefined();
+  });
+
+  it('restores leftover chart originals even when lastOn is already false', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: `
+        <html><body>
+          <main>
+            <svg>
+              <g class="recharts-yAxis-tick-labels"><text>$285K</text><text>$2K</text></g>
+            </svg>
+          </main>
+        </body></html>
+      `,
+    });
+
+    expect(api.isActive()).toBe(false);
+    api.applyState();
+    const ticks = Array.from(document.querySelectorAll('.recharts-yAxis-tick-labels text'));
+    ticks[0].setAttribute('data-mtm-chart-original-text', '$285K');
+    ticks[0].textContent = '$*,***.**K';
+    ticks[1].setAttribute('data-mtm-chart-original-text', '$2K');
+    ticks[1].textContent = '$*,***.**K';
+
+    api.applyState();
+    expect(ticks.map((n) => n.textContent)).toEqual(['$285K', '$2K']);
+    expect(document.querySelector('[data-mtm-chart-original-text]')).toBeNull();
+  });
+
   it('wraps dashboard widget titles that hydrate after the first scan', async () => {
     const { document, api } = makeDomFromHtml({
       routePath: '/dashboard',

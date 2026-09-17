@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Monarch Money - Obfuscate Balances
 // @namespace    https://tampermonkey.net/
-// @version      1.3.16
+// @version      1.3.17
 // @description  Obfuscate dollar amounts on Monarch Money Dashboard/Accounts/Transactions/Goals/Budget/Investments with performant observers
 // @match        https://app.monarch.com/*
 // @downloadURL  https://github.com/mattebad/MonarchMoneyObfuscationTweak/raw/refs/heads/main/MonarchMoneyObfuscate.user.js
@@ -543,6 +543,10 @@
             var next = on ? MTM_maskMoneyValue(orig) : orig;
             if(span.textContent !== next) { span.textContent = next; }
         });
+        // State transitions are rare; always re-apply chart/input masks. The dirty
+        // skip in applyAuxMasks is for the 8ms wrap-queue hot path, and it misses
+        // leftover SVG originals when lastOn is already false (page pref off from settings).
+        MTM_CHART_MASK.dirty = true;
         MTM_applyAuxMasks();
     }
     function MTM_nodeTouchesChart(node){
