@@ -158,6 +158,225 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     expect(api.isActive()).toBe(true);
   });
 
+  it('page preferences default all supported pages to enabled', () => {
+    const { window, api } = makeDom({ routePath: '/dashboard', snapshotFile: 'dashboard.html' });
+    expect(window.localStorage.getItem('MTM_OBF_PAGES')).toBeNull();
+    expect(api.readPagePrefs()).toEqual({
+      dashboard: true,
+      accounts: true,
+      transactions: true,
+      goals: true,
+      budget: true,
+      investments: true,
+    });
+    expect(api.isActive()).toBe(true);
+    expect(api.routeKey('/reports')).toBeNull();
+    window.localStorage.setItem('MTM_OBF_PAGES', JSON.stringify({ dashboard: false }));
+    expect(api.readPagePrefs().dashboard).toBe(false);
+    expect(api.isActive()).toBe(false);
+  });
+
+  it('page preferences disable a page family without disabling the master toggle', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/dashboard',
+      html: '<html><body><main><span class="fs-exclude">$1,234.56</span></main></body></html>',
+    });
+
+    expect(api.setPagePref('dashboard', false)).toBe(false);
+    expect(api.isActive()).toBe(false);
+    api.scanAndWrap();
+    expect(document.querySelector('.mtm-amount')).toBeNull();
+    expect(JSON.parse(document.defaultView.localStorage.getItem('MTM_OBF_PAGES')).dashboard).toBe(false);
+  });
+
+  it('page preferences apply to budget and goals route aliases', () => {
+    const budgetDom = makeDomFromHtml({
+      routePath: '/plan',
+      html: '<html><body><main><div>$1,234.56</div></main></body></html>',
+    });
+    expect(budgetDom.api.routeKey('/budget')).toBe('budget');
+    expect(budgetDom.api.routeKey('/plan/monthly')).toBe('budget');
+    expect(budgetDom.api.setPagePref('budget', false)).toBe(false);
+    expect(budgetDom.api.isActive()).toBe(false);
+
+    const goalsDom = makeDomFromHtml({
+      routePath: '/goals/debt-paydown',
+      html: '<html><body><main><div>$1,234.56</div></main></body></html>',
+    });
+    expect(goalsDom.api.routeKey('/objectives')).toBe('goals');
+    expect(goalsDom.api.routeKey('/goals/debt-paydown')).toBe('goals');
+  });
+
+  it('obfuscation settings pane injects six checkboxes without masking settings amounts', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: `
+        <html><body>
+          <main>
+            <section class="Card__CardRoot-x"><h2>Personal information</h2></section>
+            <div class="profile-amount">$99.00</div>
+          </main>
+        </body></html>
+      `,
+    });
+
+    api.ensureSettings();
+    const card = document.querySelector('#mtm-obf-settings');
+    expect(card).toBeTruthy();
+    expect(card?.className).toContain('Card__CardRoot-x');
+    expect(card?.querySelectorAll('input[data-mtm-page]').length).toBe(6);
+    expect(Array.from(card?.querySelectorAll('input[data-mtm-page]') || []).every((input) => input.checked)).toBe(true);
+    expect(document.querySelector('.profile-amount')?.textContent).toBe('$99.00');
+    expect(document.querySelector('.mtm-amount')).toBeNull();
+  });
+
+  it('obfuscation settings writes a checkbox change and restores it on re-ensure', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: '<html><body><main><div class="Card__CardRoot-x">Profile</div></main></body></html>',
+    });
+
+    api.ensureSettings();
+    const accounts = document.querySelector('input[data-mtm-page="accounts"]');
+    expect(accounts).toBeTruthy();
+    accounts.checked = false;
+    accounts.dispatchEvent(new document.defaultView.Event('change', { bubbles: true }));
+
+    expect(JSON.parse(document.defaultView.localStorage.getItem('MTM_OBF_PAGES')).accounts).toBe(false);
+    accounts.checked = true;
+    api.ensureSettings();
+    expect(document.querySelector('input[data-mtm-page="accounts"]')?.checked).toBe(false);
+  });
+
+  it('obfuscation settings adds an Account submenu entry and own pane', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: `
+        <html><body>
+          <nav>
+            <div id="account-settings-nav">
+              <a href="/settings/profile" class="native-link active" data-selected="">Profile</a>
+              <a href="/settings/display" class="native-link">Display</a>
+            </div>
+          </nav>
+          <main><div class="Card__CardRoot-x">Profile</div></main>
+        </body></html>
+      `,
+    });
+
+    api.ensureSettings();
+    const navLink = document.querySelector('#mtm-obf-settings-nav');
+    expect(navLink).toBeTruthy();
+    expect(navLink?.getAttribute('href')).toBe('/settings/obfuscation');
+    expect(navLink?.textContent).toBe('Obfuscate Balances');
+    expect(document.querySelector('a[href="/settings/profile"]')?.nextElementSibling).toBe(navLink);
+    expect(navLink?.hasAttribute('data-selected')).toBe(true);
+    expect(document.querySelector('a[href="/settings/profile"]')?.hasAttribute('data-selected')).toBe(false);
+    expect(document.querySelector('#mtm-obf-settings-pane')).toBeTruthy();
+    expect(document.querySelector('#mtm-obf-settings-pane #mtm-obf-settings')).toBeTruthy();
+    expect(document.querySelector('main > .Card__CardRoot-x')?.style.display).toBe('none');
+  });
+
+  it('leaving obfuscation settings restores hidden native content', () => {
+    const { window, document, api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: `
+        <html><body>
+          <nav>
+            <div id="account-settings-nav">
+              <a href="/settings/profile" class="native-link active" data-selected="">Profile</a>
+              <a href="/settings/display" class="native-link">Display</a>
+            </div>
+          </nav>
+          <main>
+            <div class="grid-cols-12">
+              <div class="Card__CardRoot-x native-profile">Profile</div>
+            </div>
+          </main>
+        </body></html>
+      `,
+    });
+
+    api.ensureSettings();
+    const native = document.querySelector('.native-profile');
+    expect(document.querySelector('#mtm-obf-settings-pane')).toBeTruthy();
+    expect(native?.getAttribute('data-mtm-obf-hidden')).toBe('1');
+    expect(native?.style.display).toBe('none');
+
+    window.history.pushState({}, '', '/settings/profile');
+    expect(window.location.pathname).toBe('/settings/profile');
+    api.ensureSettings();
+
+    expect(document.querySelector('#mtm-obf-settings-pane')).toBeNull();
+    expect(document.querySelector('#mtm-obf-settings')).toBeNull();
+    expect(native?.hasAttribute('data-mtm-obf-hidden')).toBe(false);
+    expect(native?.classList.contains('mtm-obf-settings-native-hidden')).toBe(false);
+    expect(native?.style.display).toBe('');
+    expect(document.querySelector('#mtm-obf-settings-nav')?.hasAttribute('data-selected')).toBe(false);
+  });
+
+  it('obfuscation settings route is never treated as an active masking page', () => {
+    const { api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: '<html><body><main><div class="Card__CardRoot-x">Profile</div></main></body></html>',
+    });
+
+    expect(api.routeKey('/settings/obfuscation')).toBeNull();
+    expect(api.routeKey()).toBeNull();
+    expect(api.isRouteAllowed()).toBe(false);
+    expect(api.isActive()).toBe(false);
+  });
+
+  it('obfuscation settings nav only intercepts unmodified left clicks', () => {
+    const { window, document, api } = makeDomFromHtml({
+      routePath: '/settings/profile',
+      html: `
+        <html><body>
+          <nav>
+            <div id="account-settings-nav">
+              <a href="/settings/profile" class="native-link active" data-selected="">Profile</a>
+              <a href="/settings/display" class="native-link">Display</a>
+            </div>
+          </nav>
+          <main><div class="Card__CardRoot-x">Profile</div></main>
+        </body></html>
+      `,
+    });
+
+    api.ensureSettings();
+    const navLink = document.querySelector('#mtm-obf-settings-nav');
+    expect(navLink).toBeTruthy();
+
+    const modified = new window.MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      ctrlKey: true,
+    });
+    navLink.dispatchEvent(modified);
+    expect(modified.defaultPrevented).toBe(false);
+    expect(window.location.pathname).toBe('/settings/profile');
+
+    const plain = new window.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    navLink.dispatchEvent(plain);
+    expect(plain.defaultPrevented).toBe(true);
+    expect(window.location.pathname).toBe('/settings/obfuscation');
+  });
+
+  it('malformed page preferences fall back to all supported pages enabled', () => {
+    const { window, api } = makeDom({ routePath: '/dashboard', snapshotFile: 'dashboard.html' });
+    window.localStorage.setItem('MTM_OBF_PAGES', 'not-json');
+    expect(api.readPagePrefs()).toEqual({
+      dashboard: true,
+      accounts: true,
+      transactions: true,
+      goals: true,
+      budget: true,
+      investments: true,
+    });
+    expect(api.isActive()).toBe(true);
+  });
+
   it('dashboard without main: scans the content pane instead of recurring item rows', async () => {
     const { document, api } = makeDomFromHtml({
       routePath: '/dashboard',
@@ -543,6 +762,57 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     api.applyState();
     expect(document.body.classList.contains('mtm-chart-ticks-ready')).toBe(false);
     expect(document.querySelector('.recharts-yAxis-tick-labels text')?.textContent).toBe('$297.5K');
+  });
+
+  it('restores chart ticks when a page pref turns the current route off', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/dashboard',
+      html: `
+        <html><body>
+          <main>
+            <svg>
+              <g class="recharts-yAxis-tick-labels"><text>$285K</text><text>$2K</text></g>
+            </svg>
+          </main>
+        </body></html>
+      `,
+    });
+
+    api.scanAndWrap();
+    api.applyState();
+    expect(document.querySelector('.recharts-yAxis-tick-labels text')?.textContent).toBe('$*,***.**K');
+
+    expect(api.setPagePref('dashboard', false)).toBe(false);
+    expect(api.isActive()).toBe(false);
+    expect(document.querySelector('.recharts-yAxis-tick-labels text')?.textContent).toBe('$285K');
+    expect(document.querySelector('.recharts-yAxis-tick-labels text')?.dataset.mtmChartOriginalText).toBeUndefined();
+  });
+
+  it('restores leftover chart originals even when lastOn is already false', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: `
+        <html><body>
+          <main>
+            <svg>
+              <g class="recharts-yAxis-tick-labels"><text>$285K</text><text>$2K</text></g>
+            </svg>
+          </main>
+        </body></html>
+      `,
+    });
+
+    expect(api.isActive()).toBe(false);
+    api.applyState();
+    const ticks = Array.from(document.querySelectorAll('.recharts-yAxis-tick-labels text'));
+    ticks[0].setAttribute('data-mtm-chart-original-text', '$285K');
+    ticks[0].textContent = '$*,***.**K';
+    ticks[1].setAttribute('data-mtm-chart-original-text', '$2K');
+    ticks[1].textContent = '$*,***.**K';
+
+    api.applyState();
+    expect(ticks.map((n) => n.textContent)).toEqual(['$285K', '$2K']);
+    expect(document.querySelector('[data-mtm-chart-original-text]')).toBeNull();
   });
 
   it('wraps dashboard widget titles that hydrate after the first scan', async () => {
