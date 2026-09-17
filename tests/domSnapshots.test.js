@@ -443,6 +443,45 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     expect(document.querySelector('#hero-flow')?.classList.contains('mtm-mask-number-flow')).toBe(false);
   });
 
+  it('masks debt-paydown statistic card number flows without touching counts', () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/goals/debt-paydown',
+      html: `
+        <html><body>
+          <aside>Invite a friend, get $30</aside>
+          <div id="root">
+            <div class="Scroll__Root-x">
+              <div class="DebtPaydown__SummaryCardsContainer-x">
+                <div class="StatisticCard__Root-x">
+                  <span class="StatisticCard__Value-x">
+                    <span data-external-id="animated-currency" class="fs-mask">
+                      <number-flow-react id="principal-flow" data='{"pre":[{"type":"currency","value":"$"}]}'></number-flow-react>
+                    </span>
+                  </span>
+                  <span>Current Debt Principal</span>
+                </div>
+              </div>
+              <div class="transaction-count">
+                <span>Open debts</span>
+                <number-flow-react id="count-flow"></number-flow-react>
+              </div>
+            </div>
+          </div>
+        </body></html>
+      `,
+    });
+
+    api.scanAndWrap();
+    api.applyState();
+    expect(document.querySelector('#principal-flow')?.classList.contains('mtm-mask-number-flow')).toBe(true);
+    expect(document.querySelector('#count-flow')?.classList.contains('mtm-mask-number-flow')).toBe(false);
+    expect(document.querySelector('aside .mtm-amount')).toBeNull();
+
+    document.defaultView.localStorage.setItem('MT_HideSensitiveInfo', '0');
+    api.applyState();
+    expect(document.querySelector('#principal-flow')?.classList.contains('mtm-mask-number-flow')).toBe(false);
+  });
+
   it('masks chart y-axis ticks before revealing starred labels', () => {
     const { document, api } = makeDomFromHtml({
       routePath: '/budget',
@@ -473,5 +512,97 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     api.applyState();
     expect(document.body.classList.contains('mtm-chart-ticks-ready')).toBe(false);
     expect(document.querySelector('.recharts-yAxis-tick-labels text')?.textContent).toBe('$297.5K');
+  });
+
+  it('wraps dashboard widget titles that hydrate after the first scan', async () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/dashboard',
+      html: `
+        <html><body>
+          <div id="root">
+            <div class="Scroll__Root-x">
+              <span class="CardTitle-x DashboardWidget__Title-x">investments</span>
+            </div>
+          </div>
+        </body></html>
+      `,
+    });
+
+    await scanAndAssertNoLeaks(document, api);
+    expect(document.querySelector('.DashboardWidget__Title-x .mtm-amount')).toBeNull();
+
+    document.querySelector('.DashboardWidget__Title-x').textContent = '$288,867 investments';
+    await scanAndAssertNoLeaks(document, api);
+    expect(document.querySelector('.DashboardWidget__Title-x .mtm-amount')).toBeTruthy();
+    expect(document.querySelector('.DashboardWidget__Title-x .mtm-amount')?.textContent).toMatch(/\$\*,\*\*\*\.\*\*/);
+  });
+
+  it('still wraps the investments title when a sibling trend is already masked', async () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/dashboard',
+      html: `
+        <html><body>
+          <aside class="SideBar__Root">Invite a friend, get $30</aside>
+          <div id="root">
+            <div class="Scroll__Root-x">
+              <div class="DashboardWidget__HeaderArea-x">
+                <span class="CardTitle-x DashboardWidget__Title-x">$292,969 investments</span>
+                <span class="fs-exclude"><span class="mtm-amount-wrap"><span class="mtm-amount" data-original-text="$1,268.40">$*,***.**</span></span> (1.4%)</span>
+              </div>
+            </div>
+          </div>
+        </body></html>
+      `,
+    });
+
+    await scanAndAssertNoLeaks(document, api);
+    expect(document.querySelector('.DashboardWidget__Title-x .mtm-amount')).toBeTruthy();
+    expect(document.querySelector('.DashboardWidget__Title-x .mtm-amount')?.textContent).toMatch(/\$\*,\*\*\*\.\*\*/);
+    expect(document.querySelector('aside .mtm-amount')).toBeNull();
+  });
+
+  it('wraps investments titles on text-node replacement without waiting for a rescan', async () => {
+    const { window, document } = makeDomFromHtml({
+      routePath: '/dashboard',
+      html: `
+        <html><body>
+          <aside class="SideBar__Root">Invite a friend, get $30</aside>
+          <div id="root">
+            <div class="Scroll__Root-x">
+              <span class="CardTitle-x DashboardWidget__Title-x">investments</span>
+            </div>
+          </div>
+        </body></html>
+      `,
+    });
+
+    window.MTM_startObserver();
+    const title = document.querySelector('.DashboardWidget__Title-x');
+    title.textContent = '$292,969 investments';
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(title.querySelector('.mtm-amount')).toBeTruthy();
+    expect(title.querySelector('.mtm-amount')?.textContent).toMatch(/\$\*,\*\*\*\.\*\*/);
+    expect(document.querySelector('aside .mtm-amount')).toBeNull();
+  });
+
+  it('keeps chart ticks hidden until late dollar labels are masked', async () => {
+    const { document, api } = makeDomFromHtml({
+      routePath: '/dashboard',
+      html: '<html><body><main><div class="recharts-wrapper fs-mask"></div></main></body></html>',
+    });
+
+    api.scanAndWrap();
+    api.applyAuxMasks();
+    expect(document.body.classList.contains('mtm-chart-ticks-ready')).toBe(false);
+
+    document.querySelector('.recharts-wrapper').innerHTML =
+      '<svg><g class="recharts-yAxis-tick-labels"><text>$297.5K</text></g></svg>';
+    api.scanAndWrap();
+    api.applyAuxMasks();
+
+    expect(document.querySelector('.recharts-yAxis-tick-labels text')?.textContent).toBe('$*,***.**K');
+    expect(document.body.classList.contains('mtm-chart-ticks-ready')).toBe(true);
+    expect(document.querySelector('svg .mtm-amount')).toBeNull();
   });
 });
