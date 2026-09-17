@@ -77,8 +77,9 @@
     // [ MT: Obfuscate Dollar Amounts — scoped to dashboard, accounts, transactions, goals, budget/plan, and investments ]
     // Injects minimal CSS used by the masking spans and the sidebar toggle; idempotent.
     (function MTM_Obfuscation_InitCSS(){
-        const css = '\n.mtm-amount-wrap{position:relative;display:inline-block;margin-right:.25em}\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .fs-mask .recharts-yAxis .recharts-text tspan{opacity:0}\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis .recharts-cartesian-axis-tick-value,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis .recharts-text,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis tspan{opacity:0!important}\nbody.mt-obfuscate-on input.fs-exclude,\nbody.mt-obfuscate-on input[class*="CurrencyInput__Input-"]{-webkit-text-security:disc;text-security:disc}\n.mtm-nav-eye-btn{display:flex;align-items:center;gap:12px;cursor:pointer;color:inherit;background:transparent;border:0;width:100%;padding:8px 10px;border-radius:8px;text-align:left}\n.mtm-nav-eye-btn:hover{background:rgba(255,255,255,.06)}\n.mtm-nav-eye-btn .mtm-iconwrap{display:flex;align-items:center;justify-content:center;width:40px;height:40px}\n.mtm-nav-eye-btn .mtm-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px}\n.mtm-nav-eye-btn .mtm-icon svg{width:20px;height:20px;display:block}\n.mtm-nav-eye-btn .mtm-label{font-size:12px;white-space:nowrap}\n.mtm-nav-collapsed .mtm-label{display:none}\n#mtm-obf-master{display:flex;align-items:center;gap:0;box-sizing:border-box;min-width:0;max-width:100%;height:36px;margin:0 0 2px;padding:8px 12px;overflow:hidden;transition:none!important}\n#mtm-obf-master .mtm-nav-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}\n#mtm-obf-master:not(.mtm-nav-collapsed) .mtm-nav-title{display:inline-block}\n#mtm-obf-master .mtm-nav-iconwrap{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:16px;height:16px;min-width:16px;margin:0 12px 0 0;transition:none!important}\n#mtm-obf-master .mtm-eye-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;line-height:1}\n#mtm-obf-master .mtm-eye-icon::before,\n#mtm-obf-master .mtm-eye-icon::after{content:none!important}\n#mtm-obf-master .mtm-eye-icon svg{width:16px;height:16px;display:block}\n.sidebar-collapsed #mtm-obf-master,\n#mtm-obf-master.mtm-nav-collapsed{width:40px!important;min-width:40px!important;max-width:40px!important;height:36px!important;padding:8px 12px!important;gap:0!important;margin:0 0 2px!important;overflow:hidden!important;justify-content:flex-start!important;transition:none!important}\n.sidebar-collapsed #mtm-obf-master .mtm-nav-iconwrap,\n#mtm-obf-master.mtm-nav-collapsed .mtm-nav-iconwrap{margin:0!important}\n.sidebar-collapsed #mtm-obf-master .mtm-nav-title,\n#mtm-obf-master.mtm-nav-collapsed .mtm-nav-title{display:none!important}\n#mtm-obf-settings.mtm-settings-card{box-sizing:border-box;width:100%;max-width:100%;margin-top:16px;padding:24px;color:inherit}\n#mtm-obf-settings .mtm-settings-header{display:flex;flex-direction:column;gap:6px;margin:0 0 16px}\n#mtm-obf-settings .mtm-settings-heading{margin:0;font-size:1.125rem;line-height:1.4;font-weight:600;color:inherit}\n#mtm-obf-settings .mtm-settings-description{margin:0;max-width: sixtyrem;font-size:.875rem;line-height:1.45;opacity:.72}\n#mtm-obf-settings .mtm-settings-list{list-style:none;margin:0;padding:0}\n#mtm-obf-settings .mtm-settings-row{border-top:1px solid color-mix(in srgb,currentColor 14%,transparent)}\n#mtm-obf-settings .mtm-settings-row:last-child{border-bottom:1px solid color-mix(in srgb,currentColor 14%,transparent)}\n#mtm-obf-settings .mtm-settings-label{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:52px;width:100%;cursor:pointer}\n#mtm-obf-settings .mtm-settings-copy{display:flex;flex-direction:column;gap:2px;min-width:0}\n#mtm-obf-settings .mtm-settings-name{font-size:.9375rem;line-height:1.3;font-weight:500}\n#mtm-obf-settings .mtm-settings-hint{font-size:.8125rem;line-height:1.35;opacity:.65}\n#mtm-obf-settings input[data-mtm-page]{flex:0 0 auto;width:16px;height:16px;margin:0;accent-color:currentColor}\n';
+        const css = '\n.mtm-amount-wrap{position:relative;display:inline-block;margin-right:.25em}\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .fs-mask .recharts-yAxis .recharts-text tspan{opacity:0}\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis .recharts-cartesian-axis-tick-value,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis .recharts-text,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-yAxis tspan{opacity:0!important}\nbody.mt-obfuscate-on input.fs-exclude,\nbody.mt-obfuscate-on input[class*="CurrencyInput__Input-"]{-webkit-text-security:disc;text-security:disc}\n.mtm-nav-eye-btn{display:flex;align-items:center;gap:12px;cursor:pointer;color:inherit;background:transparent;border:0;width:100%;padding:8px 10px;border-radius:8px;text-align:left}\n.mtm-nav-eye-btn:hover{background:rgba(255,255,255,.06)}\n.mtm-nav-eye-btn .mtm-iconwrap{display:flex;align-items:center;justify-content:center;width:40px;height:40px}\n.mtm-nav-eye-btn .mtm-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px}\n.mtm-nav-eye-btn .mtm-icon svg{width:20px;height:20px;display:block}\n.mtm-nav-eye-btn .mtm-label{font-size:12px;white-space:nowrap}\n.mtm-nav-collapsed .mtm-label{display:none}\n#mtm-obf-master{display:flex;align-items:center;gap:0;box-sizing:border-box;min-width:0;max-width:100%;height:36px;margin:0 0 2px;padding:8px 12px;overflow:hidden;transition:none!important}\n#mtm-obf-master .mtm-nav-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}\n#mtm-obf-master:not(.mtm-nav-collapsed) .mtm-nav-title{display:inline-block}\n#mtm-obf-master .mtm-nav-iconwrap{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:16px;height:16px;min-width:16px;margin:0 12px 0 0;transition:none!important}\n#mtm-obf-master .mtm-eye-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;line-height:1}\n#mtm-obf-master .mtm-eye-icon::before,\n#mtm-obf-master .mtm-eye-icon::after{content:none!important}\n#mtm-obf-master .mtm-eye-icon svg{width:16px;height:16px;display:block}\n.sidebar-collapsed #mtm-obf-master,\n#mtm-obf-master.mtm-nav-collapsed{width:40px!important;min-width:40px!important;max-width:40px!important;height:36px!important;padding:8px 12px!important;gap:0!important;margin:0 0 2px!important;overflow:hidden!important;justify-content:flex-start!important;transition:none!important}\n.sidebar-collapsed #mtm-obf-master .mtm-nav-iconwrap,\n#mtm-obf-master.mtm-nav-collapsed .mtm-nav-iconwrap{margin:0!important}\n.sidebar-collapsed #mtm-obf-master .mtm-nav-title,\n#mtm-obf-master.mtm-nav-collapsed .mtm-nav-title{display:none!important}\n#mtm-obf-settings.mtm-settings-card{box-sizing:border-box;width:100%;max-width:100%;margin-top:16px;padding:24px;color:inherit;scroll-margin-top:24px}\n#mtm-obf-settings .mtm-settings-header{display:flex;flex-direction:column;gap:6px;margin:0 0 16px}\n#mtm-obf-settings .mtm-settings-heading{margin:0;font-size:1.125rem;line-height:1.4;font-weight:600;color:inherit}\n#mtm-obf-settings .mtm-settings-description{margin:0;max-width:60rem;font-size:.875rem;line-height:1.45;opacity:.72}\n#mtm-obf-settings .mtm-settings-list{list-style:none;margin:0;padding:0}\n#mtm-obf-settings .mtm-settings-row{border-top:1px solid color-mix(in srgb,currentColor 14%,transparent)}\n#mtm-obf-settings .mtm-settings-row:last-child{border-bottom:1px solid color-mix(in srgb,currentColor 14%,transparent)}\n#mtm-obf-settings .mtm-settings-label{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:52px;width:100%;cursor:pointer}\n#mtm-obf-settings .mtm-settings-copy{display:flex;flex-direction:column;gap:2px;min-width:0}\n#mtm-obf-settings .mtm-settings-name{font-size:.9375rem;line-height:1.3;font-weight:500}\n#mtm-obf-settings .mtm-settings-hint{font-size:.8125rem;line-height:1.35;opacity:.65}\n#mtm-obf-settings input[data-mtm-page]{flex:0 0 auto;width:16px;height:16px;margin:0;accent-color:currentColor}\n';
         const auxCss = '\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-wrapper.fs-mask .recharts-cartesian-axis-tick-labels.recharts-yAxis-tick-labels .recharts-layer.recharts-cartesian-axis-tick-label,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) .recharts-wrapper.fs-mask .recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value,\nbody.mt-obfuscate-on:not(.mtm-chart-ticks-ready) svg .recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-label{opacity:0!important}\nbody.mt-obfuscate-on number-flow-react.mtm-mask-number-flow{position:relative}\nbody.mt-obfuscate-on number-flow-react.mtm-mask-number-flow::part(left),\nbody.mt-obfuscate-on number-flow-react.mtm-mask-number-flow::part(number),\nbody.mt-obfuscate-on number-flow-react.mtm-mask-number-flow::part(right){opacity:0!important}\nbody.mt-obfuscate-on number-flow-react.mtm-mask-number-flow::after{content:"$*,***.**";position:absolute;inset:0;display:inline-flex;align-items:center;justify-content:center;pointer-events:none;white-space:nowrap;color:inherit;z-index:1}\n';
+        // md+ 4/span 9 matches Monarch's current settings grid (3-col nav + 9-col content).
         const paneCss = '\n#mtm-obf-settings-pane{box-sizing:border-box;display:block;grid-column:1/-1;grid-row:1;min-width:0;width:100%;min-height:100%;padding:0;scroll-margin-top:24px}\n#mtm-obf-settings-pane>#mtm-obf-settings{width:100%;max-width:none;margin:0}\n@media (min-width:768px){#mtm-obf-settings-pane{grid-column:4/span 9}}\n.mtm-obf-settings-native-hidden{display:none!important}\n';
         function inject(){
             try {
@@ -86,9 +87,7 @@
                 if(!head) return;
                 const style = document.getElementById('mtm-obf-css') || document.createElement('style');
                 if(!style.id) style.id = 'mtm-obf-css';
-                style.textContent = (css + auxCss + paneCss)
-                    .replace('max-width: sixtyrem', 'max-width:60rem')
-                    .replace('#mtm-obf-settings.mtm-settings-card{box-sizing:border-box;width:100%;max-width:100%;margin-top:16px;padding:24px;color:inherit}', '#mtm-obf-settings.mtm-settings-card{box-sizing:border-box;width:100%;max-width:100%;margin-top:16px;padding:24px;color:inherit;scroll-margin-top:24px}');
+                style.textContent = css + auxCss + paneCss;
                 if(!style.parentNode) head.appendChild(style);
             } catch(e) { void e; }
         }
@@ -99,7 +98,7 @@
     })();
 
     // Central configuration: supported pages, scan containers, and elements to skip.
-    // The catalog is also consumed by the Profile settings pane so route gating and UI
+    // The catalog is also consumed by the dedicated settings pane so route gating and UI
     // cannot drift apart when a supported page is added or renamed.
     const MTM_PAGE_CATALOG = [
         { id: 'dashboard', label: 'Dashboard', hint: 'Net worth, widgets, charts', re: /^\/dashboard(?:\/|$)/ },
@@ -353,6 +352,8 @@
     }
 
     const MTM_OBF_PAGE_PREFS_KEY = 'MTM_OBF_PAGES';
+    var MTM_PAGE_PREFS_CACHE = null;
+    var MTM_PAGE_PREFS_RAW = undefined;
 
     function MTM_findPageEntry(id) {
         for(var i=0; i<MTM_PAGE_CATALOG.length; i++){
@@ -363,18 +364,22 @@
 
     // Missing, malformed, or partial preferences intentionally resolve to "on" for
     // every known page so existing installs retain their current behavior.
+    // Cache the parsed object keyed by the raw localStorage string so MutationObserver
+    // and wrap scans skip JSON.parse on the hot path.
     function MTM_readPagePrefs() {
+        var raw = null;
+        try { raw = localStorage.getItem(MTM_OBF_PAGE_PREFS_KEY); } catch(e) { raw = null; }
+        if(MTM_PAGE_PREFS_CACHE && MTM_PAGE_PREFS_RAW === raw) return MTM_PAGE_PREFS_CACHE;
         var parsed = null;
-        try {
-            var raw = localStorage.getItem(MTM_OBF_PAGE_PREFS_KEY);
-            if(raw) parsed = JSON.parse(raw);
-        } catch(e) { parsed = null; }
+        try { if(raw) parsed = JSON.parse(raw); } catch(e) { parsed = null; }
         var source = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
         var prefs = {};
         for(var i=0; i<MTM_PAGE_CATALOG.length; i++){
             var id = MTM_PAGE_CATALOG[i].id;
             prefs[id] = !(source && source[id] === false);
         }
+        MTM_PAGE_PREFS_RAW = raw;
+        MTM_PAGE_PREFS_CACHE = prefs;
         return prefs;
     }
 
@@ -384,7 +389,10 @@
             var id = MTM_PAGE_CATALOG[i].id;
             normalized[id] = !!(next && next[id] !== false);
         }
-        try { setCookie(MTM_OBF_PAGE_PREFS_KEY, JSON.stringify(normalized)); } catch(e) { void e; }
+        var serialized = JSON.stringify(normalized);
+        try { setCookie(MTM_OBF_PAGE_PREFS_KEY, serialized); } catch(e) { void e; }
+        MTM_PAGE_PREFS_RAW = serialized;
+        MTM_PAGE_PREFS_CACHE = normalized;
         return normalized;
     }
 
@@ -409,7 +417,7 @@
         return null;
     }
 
-    // Returns true if current SPA route is supported and enabled in Profile settings.
+    // Returns true if current SPA route is supported and enabled in page settings.
     function MTM_isRouteAllowed() {
         var key = MTM_routeKey();
         return !!key && MTM_isPageEnabled(key);
@@ -1555,39 +1563,45 @@
         try { ensureObs.observe(document.documentElement || document.body, { childList: true, subtree: true }); } catch(e) { void e; }
     })();
 
-    // Profile settings injection: controls which supported page families use the
+    // Dedicated settings pane: controls which supported page families use the
     // sidebar's global obfuscation switch. This pane itself is never obfuscated.
-    (function MTM_ProfileSettingsPane(){
+    (function MTM_SettingsPane(){
         if(window.MTM_OBF_SETTINGS_WIRED) return;
         window.MTM_OBF_SETTINGS_WIRED = true;
 
         var CARD_ID = 'mtm-obf-settings';
         var PANE_ID = 'mtm-obf-settings-pane';
         var CARD_SELECTOR = '[class*="Card__CardRoot"], [class*="CardRoot-"], [class*="CardRoot"]';
-        var PROFILE_RE = /^\/settings\/profile(?:\/|$)/;
         var OBFUSCATION_RE = /^\/settings\/obfuscation(?:\/|$)/;
         var SETTINGS_RE = /^\/settings(?:\/|$)/;
         var NAV_ID = 'mtm-obf-settings-nav';
         var NAV_HREF = '/settings/obfuscation';
         var ensureTimer = null;
         var lastAnchorTarget = '';
+        var settingsObs = null;
 
-        function isProfileRoute(){
-            return PROFILE_RE.test((window.location && window.location.pathname) || '');
-        }
         function isSettingsRoute(){
             return SETTINGS_RE.test((window.location && window.location.pathname) || '');
         }
         function isObfuscationRoute(){
             return OBFUSCATION_RE.test((window.location && window.location.pathname) || '');
         }
+        function isSettingsProfileHref(href){
+            try { return new URL(href || '', window.location.origin).pathname === '/settings/profile'; }
+            catch(e) { return false; }
+        }
         function findProfileSettingsLink(){
-            var links = document.querySelectorAll('a[href]');
-            for(var i=0; i<links.length; i++){
-                var href = links[i].getAttribute('href') || '';
-                try {
-                    if(new URL(href, window.location.origin).pathname === '/settings/profile') return links[i];
-                } catch(e) { void e; }
+            var scoped = document.querySelectorAll('nav a[href], [class*="Card__CardRoot"] a[href]');
+            for(var i=0; i<scoped.length; i++){
+                if(isSettingsProfileHref(scoped[i].getAttribute('href'))) return scoped[i];
+            }
+            var loose = document.querySelectorAll('a[href*="/settings/profile"]');
+            for(var li=0; li<loose.length; li++){
+                if(!isSettingsProfileHref(loose[li].getAttribute('href'))) continue;
+                var parent = loose[li].parentElement;
+                if(parent && parent.querySelectorAll && parent.querySelectorAll('a[href*="/settings/"]').length >= 2){
+                    return loose[li];
+                }
             }
             return null;
         }
@@ -1643,6 +1657,9 @@
                 link.setAttribute('data-mtm-settings-nav', '');
                 link.setAttribute('aria-label', 'Obfuscate Balances');
                 link.addEventListener('click', function(e){
+                    if(e.defaultPrevented) return;
+                    if(e.button !== 0) return;
+                    if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                     e.preventDefault();
                     if(isObfuscationRoute()) return;
                     history.pushState(history.state, '', NAV_HREF);
@@ -1829,25 +1846,6 @@
             bindCard(card);
             maybeScrollToSettingsPane();
         }
-        function MTM_findSettingsMount(){
-            var roots = findRootCandidates();
-            for(var i=0; i<roots.length; i++){
-                var cards = findCards(roots[i]);
-                if(!cards.length) continue;
-                var lastCard = cards[cards.length - 1];
-                var parent = lastCard.parentElement;
-                while(parent && parent.matches && parent.matches(CARD_SELECTOR)) parent = parent.parentElement;
-                if(parent && !isExcludedMount(parent)){
-                    return { parent: parent, before: null, template: lastCard };
-                }
-            }
-            for(var ri=0; ri<roots.length; ri++){
-                if(roots[ri].tagName === 'MAIN' || roots[ri].matches('[class*="Scroll__Root"]')){
-                    return { parent: roots[ri], before: null, template: null };
-                }
-            }
-            return roots.length ? { parent: roots[0], before: null, template: null } : null;
-        }
         function copyClassName(target, source, ownClass){
             var sourceClass = '';
             try { sourceClass = source && source.className ? String(source.className) : ''; } catch(e) { void e; }
@@ -1937,14 +1935,29 @@
                 MTM_setPagePref(target.getAttribute('data-mtm-page'), target.checked);
             });
         }
+        function syncSettingsObserver(){
+            if(MTM_TEST_MODE) return;
+            if(isSettingsRoute()){
+                if(!settingsObs){
+                    settingsObs = new MutationObserver(function(){ scheduleEnsure(200); });
+                    try { settingsObs.observe(document.documentElement || document.body, { childList: true, subtree: true }); } catch(e) { void e; }
+                }
+                return;
+            }
+            if(settingsObs){
+                try { settingsObs.disconnect(); } catch(e) { void e; }
+                settingsObs = null;
+            }
+        }
         function ensure(){
             ensureSettingsNav();
             if(isObfuscationRoute()){
                 ensureSettingsPane();
-                return;
+            } else {
+                removeSettingsPane();
+                maybeScrollToSettingsPane();
             }
-            removeSettingsPane();
-            maybeScrollToSettingsPane();
+            syncSettingsObserver();
         }
         function scheduleEnsure(delay){
             if(ensureTimer) clearTimeout(ensureTimer);
@@ -1955,22 +1968,18 @@
         }
 
         window.MTM_OBF_ENSURE_SETTINGS = ensure;
-        window.MTM_OBF_SETTINGS_API = { ensure: ensure, findMount: MTM_findSettingsMount };
+        window.MTM_OBF_SETTINGS_API = { ensure: ensure };
         if(MTM_TEST_MODE) return;
 
         scheduleEnsure(0);
         var tries = 0;
         var intv = setInterval(function(){
             tries++;
-            ensure();
+            if(isSettingsRoute()) ensure();
             if(tries > 120) clearInterval(intv);
         }, 500);
         window.addEventListener('load', function(){ scheduleEnsure(250); });
         window.addEventListener('popstate', function(){ scheduleEnsure(250); });
-        window.addEventListener('hashchange', function(){
-            lastAnchorTarget = '';
-            scheduleEnsure(0);
-        });
         var _ps3 = history.pushState;
         history.pushState = function(){
             var r = _ps3.apply(this, arguments);
@@ -1983,8 +1992,6 @@
             scheduleEnsure(250);
             return r;
         };
-        var ensureObs = new MutationObserver(function(){ scheduleEnsure(200); });
-        try { ensureObs.observe(document.documentElement || document.body, { childList: true, subtree: true }); } catch(e) { void e; }
     })();
 
     // Test harness hooks (only populated when window.__MTM_OBF_TEST__ is truthy).

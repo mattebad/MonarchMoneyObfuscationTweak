@@ -6,7 +6,7 @@ Lightweight userscript that masks dollar amounts on Monarch Money to prevent sho
 - **Masks currency**: Replaces values like `$4,201.28`, `-$150.00`, and `($99.00)` with a normalized pattern such as `$*,***.**`.
 - **Hover to reveal**: When masking is on, hovering a masked value temporarily reveals the original amount.
 - **Sidebar toggle**: Inserts an “Obfuscate Balances” control in Monarch’s left sidebar to turn masking on/off. Your choice is saved locally.
-- **Page settings**: Adds an “Obfuscate Balances” entry under Settings → Account. It opens a dedicated pane at `/settings/obfuscation` where you can choose which supported pages use masking. These preferences are saved locally and default to enabled.
+- **Page settings**: Adds an “Obfuscate Balances” entry under Settings → Account. It opens a dedicated pane at `/settings/obfuscation` where you can choose which supported pages use masking. These preferences are saved locally and default to enabled. That settings URL is provided by this userscript, so it only exists while the script is installed and enabled.
 - **Supported pages**: `/dashboard`, `/accounts`, `/transactions`, `/goals`, `/budget` (plus legacy `/plan`), `/investments`.
 - **Performance‑aware**: Scans only known containers; when masking is OFF it stays effectively idle.
 
@@ -32,6 +32,7 @@ The script only runs on `https://app.monarch.com/*`.
 - The script primarily targets elements that contain a dollar sign. Amounts without `$` may not be masked.
 - Highly dynamic chart tooltips/SVGs are intentionally skipped to avoid UI jitter. Axis labels may be hidden while masking is ON.
 - If Monarch updates its CSS class names, some areas may need selector updates.
+- `/settings/obfuscation` is owned by this userscript. Opening that URL without the script installed will not show a native Monarch page.
 
 ## Troubleshooting
 - **Toggle not visible**: Wait a second after load; the script retries a few times as the sidebar mounts. If it still doesn’t appear, refresh the page.

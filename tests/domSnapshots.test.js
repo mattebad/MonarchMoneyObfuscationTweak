@@ -171,6 +171,9 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     });
     expect(api.isActive()).toBe(true);
     expect(api.routeKey('/reports')).toBeNull();
+    window.localStorage.setItem('MTM_OBF_PAGES', JSON.stringify({ dashboard: false }));
+    expect(api.readPagePrefs().dashboard).toBe(false);
+    expect(api.isActive()).toBe(false);
   });
 
   it('page preferences disable a page family without disabling the master toggle', () => {
@@ -272,6 +275,92 @@ describe('MonarchMoneyObfuscate userscript - DOM snapshot regression', () => {
     expect(document.querySelector('#mtm-obf-settings-pane')).toBeTruthy();
     expect(document.querySelector('#mtm-obf-settings-pane #mtm-obf-settings')).toBeTruthy();
     expect(document.querySelector('main > .Card__CardRoot-x')?.style.display).toBe('none');
+  });
+
+  it('leaving obfuscation settings restores hidden native content', () => {
+    const { window, document, api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: `
+        <html><body>
+          <nav>
+            <div id="account-settings-nav">
+              <a href="/settings/profile" class="native-link active" data-selected="">Profile</a>
+              <a href="/settings/display" class="native-link">Display</a>
+            </div>
+          </nav>
+          <main>
+            <div class="grid-cols-12">
+              <div class="Card__CardRoot-x native-profile">Profile</div>
+            </div>
+          </main>
+        </body></html>
+      `,
+    });
+
+    api.ensureSettings();
+    const native = document.querySelector('.native-profile');
+    expect(document.querySelector('#mtm-obf-settings-pane')).toBeTruthy();
+    expect(native?.getAttribute('data-mtm-obf-hidden')).toBe('1');
+    expect(native?.style.display).toBe('none');
+
+    window.history.pushState({}, '', '/settings/profile');
+    expect(window.location.pathname).toBe('/settings/profile');
+    api.ensureSettings();
+
+    expect(document.querySelector('#mtm-obf-settings-pane')).toBeNull();
+    expect(document.querySelector('#mtm-obf-settings')).toBeNull();
+    expect(native?.hasAttribute('data-mtm-obf-hidden')).toBe(false);
+    expect(native?.classList.contains('mtm-obf-settings-native-hidden')).toBe(false);
+    expect(native?.style.display).toBe('');
+    expect(document.querySelector('#mtm-obf-settings-nav')?.hasAttribute('data-selected')).toBe(false);
+  });
+
+  it('obfuscation settings route is never treated as an active masking page', () => {
+    const { api } = makeDomFromHtml({
+      routePath: '/settings/obfuscation',
+      html: '<html><body><main><div class="Card__CardRoot-x">Profile</div></main></body></html>',
+    });
+
+    expect(api.routeKey('/settings/obfuscation')).toBeNull();
+    expect(api.routeKey()).toBeNull();
+    expect(api.isRouteAllowed()).toBe(false);
+    expect(api.isActive()).toBe(false);
+  });
+
+  it('obfuscation settings nav only intercepts unmodified left clicks', () => {
+    const { window, document, api } = makeDomFromHtml({
+      routePath: '/settings/profile',
+      html: `
+        <html><body>
+          <nav>
+            <div id="account-settings-nav">
+              <a href="/settings/profile" class="native-link active" data-selected="">Profile</a>
+              <a href="/settings/display" class="native-link">Display</a>
+            </div>
+          </nav>
+          <main><div class="Card__CardRoot-x">Profile</div></main>
+        </body></html>
+      `,
+    });
+
+    api.ensureSettings();
+    const navLink = document.querySelector('#mtm-obf-settings-nav');
+    expect(navLink).toBeTruthy();
+
+    const modified = new window.MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      ctrlKey: true,
+    });
+    navLink.dispatchEvent(modified);
+    expect(modified.defaultPrevented).toBe(false);
+    expect(window.location.pathname).toBe('/settings/profile');
+
+    const plain = new window.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    navLink.dispatchEvent(plain);
+    expect(plain.defaultPrevented).toBe(true);
+    expect(window.location.pathname).toBe('/settings/obfuscation');
   });
 
   it('malformed page preferences fall back to all supported pages enabled', () => {
